@@ -9,21 +9,29 @@ import async_timeout
 import voluptuous as vol
 
 from homeassistant import config_entries, core
-from homeassistant.const import CONF_API_KEY, CONF_NAME
+from homeassistant.const import CONF_API_KEY
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.selector import (
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
+    TextSelector,
+    TextSelectorConfig,
+    TextSelectorType,
+)
 
 from .const import (
     CONF_BASE_URL,
-    CONF_CHAT_MODEL,
     CONF_FREQUENCY_PENALTY,
     CONF_MAX_TOKENS,
     CONF_MODEL,
     CONF_PRESENCE_PENALTY,
     CONF_PROMPT,
-    CONF_SERVICE_NAME,
-    CONF_SERVICE_TYPE,
     CONF_TEMPERATURE,
     CONF_TOP_P,
     DEFAULT_BASE_URL,
@@ -32,20 +40,24 @@ from .const import (
     DEFAULT_MAX_TOKENS,
     DEFAULT_MODEL,
     DEFAULT_PRESENCE_PENALTY,
-    DEFAULT_PROMPT,
     DEFAULT_TEMPERATURE,
     DEFAULT_TOP_P,
     DOMAIN,
-    SERVICE_MODEL_MAP,
     SERVICE_TYPE_AI_TASK,
     SERVICE_TYPE_CONVERSATION,
-    SERVICE_TYPE_NAMES,
     SERVICE_TYPE_STT,
     SERVICE_TYPE_TTS,
-    SERVICE_TYPES,
+    SERVICE_TYPE_NAMES,
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+SUPPORTED_SUBENTRY_TYPES = [
+    SERVICE_TYPE_CONVERSATION,
+    SERVICE_TYPE_STT,
+    SERVICE_TYPE_TTS,
+    SERVICE_TYPE_AI_TASK,
+]
 
 
 async def validate_input(hass: core.HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
@@ -86,17 +98,25 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._base_url: str | None = None
         self._api_key: str | None = None
         self._available_models: list[str] = []
-        self._service_type: str | None = None
-        self._main_entry_id: str | None = None
+
+    @staticmethod
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> OptionsFlowHandler:
+        """Create the options flow."""
+        return OptionsFlowHandler(config_entry)
+
+    @staticmethod
+    def async_get_supported_subentry_types(
+        config_entry: config_entries.ConfigEntry,
+    ) -> list[str]:
+        """Return supported subentry types."""
+        return SUPPORTED_SUBENTRY_TYPES
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle the initial step."""
-        # Check if this is a service sub-entry creation
-        if self.context.get("source") == "options" and user_input and CONF_SERVICE_TYPE in user_input:
-            return await self._async_create_service_entry(user_input)
-            
         errors: dict[str, str] = {}
         
         if user_input is not None:
@@ -136,32 +156,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def _async_create_service_entry(self, service_data: dict[str, Any]) -> FlowResult:
-        """Create a service sub-entry."""
-        service_name = service_data.get(CONF_SERVICE_NAME, f"LiteLLM {service_data[CONF_SERVICE_TYPE].title()}")
-        
-        return self.async_create_entry(
-            title=service_name,
-            data=service_data,
-        )
-
-
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle reconfiguration of the integration."""
         config_entry = self._get_reconfigure_entry()
-        
-        # Check if this is a service sub-entry
-        if config_entry.data.get(CONF_SERVICE_TYPE):
-            return await self._async_step_reconfigure_service(user_input, config_entry)
-        else:
-            return await self._async_step_reconfigure_main(user_input, config_entry)
-
-    async def _async_step_reconfigure_main(
-        self, user_input: dict[str, Any] | None = None, config_entry=None
-    ) -> FlowResult:
-        """Handle reconfiguration of the main integration entry."""
         errors: dict[str, str] = {}
         
         if user_input is not None:
@@ -203,80 +202,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def _async_step_reconfigure_service(
-        self, user_input: dict[str, Any] | None = None, config_entry=None
-    ) -> FlowResult:
-        """Handle reconfiguration of a service sub-entry."""
-        service_type = config_entry.data[CONF_SERVICE_TYPE]
-        
-        # Get available models for this service type
-        available_models = SERVICE_MODEL_MAP.get(service_type, [])
-        
-        if user_input is not None:
-            # Update the service entry
-            updated_data = dict(config_entry.data)
-            updated_data.update(user_input)
-            
-            self.hass.config_entries.async_update_entry(
-                config_entry,
-                data=updated_data,
-            )
-            return self.async_abort(reason="reconfigure_successful")
-
-        # Build schema based on service type
-        schema_fields = {
-            vol.Required(
-                CONF_SERVICE_NAME,
-                default=config_entry.data.get(CONF_SERVICE_NAME, ""),
-            ): str,
-            vol.Required(
-                CONF_MODEL,
-                default=config_entry.data.get(CONF_MODEL, available_models[0] if available_models else ""),
-            ): str,
-        }
-        
-        # Add service-specific fields
-        if service_type == SERVICE_TYPE_CONVERSATION:
-            schema_fields.update({
-                vol.Optional(
-                    CONF_PROMPT,
-                    default=config_entry.data.get(CONF_PROMPT, DEFAULT_PROMPT),
-                ): cv.template,
-                vol.Optional(
-                    CONF_MAX_TOKENS,
-                    default=config_entry.data.get(CONF_MAX_TOKENS, DEFAULT_MAX_TOKENS),
-                ): int,
-                vol.Optional(
-                    CONF_TEMPERATURE,
-                    default=config_entry.data.get(CONF_TEMPERATURE, DEFAULT_TEMPERATURE),
-                ): vol.All(vol.Coerce(float), vol.Range(min=0, max=2)),
-                vol.Optional(
-                    CONF_TOP_P,
-                    default=config_entry.data.get(CONF_TOP_P, DEFAULT_TOP_P),
-                ): vol.All(vol.Coerce(float), vol.Range(min=0, max=1)),
-                vol.Optional(
-                    CONF_PRESENCE_PENALTY,
-                    default=config_entry.data.get(CONF_PRESENCE_PENALTY, DEFAULT_PRESENCE_PENALTY),
-                ): vol.All(vol.Coerce(float), vol.Range(min=-2, max=2)),
-                vol.Optional(
-                    CONF_FREQUENCY_PENALTY,
-                    default=config_entry.data.get(CONF_FREQUENCY_PENALTY, DEFAULT_FREQUENCY_PENALTY),
-                ): vol.All(vol.Coerce(float), vol.Range(min=-2, max=2)),
-            })
-
-        return self.async_show_form(
-            step_id="reconfigure",
-            data_schema=vol.Schema(schema_fields),
-        )
-
-    @staticmethod
-    @core.callback
-    def async_get_options_flow(
-        config_entry: config_entries.ConfigEntry,
-    ) -> OptionsFlowHandler:
-        """Create the options flow."""
-        return OptionsFlowHandler(config_entry)
-
 
 class OptionsFlowHandler(config_entries.OptionsFlow):
     """LiteLLM Conversation config flow options handler."""
@@ -289,261 +214,240 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Manage the options."""
-        # Check if this is the main integration entry
-        if not self.config_entry.data.get(CONF_SERVICE_TYPE):
-            return await self.async_step_add_service()
-        else:
-            # This is a service entry, should not have options flow
-            return self.async_abort(reason="not_supported")
+        return self.async_show_menu(
+            step_id="init",
+            menu_options=[
+                "add_conversation",
+                "add_stt", 
+                "add_tts",
+                "add_ai_task",
+            ],
+        )
 
-    async def async_step_add_service(
+    async def async_step_add_conversation(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Handle adding a new service."""
+        """Add a conversation service."""
+        return await self._add_subentry(SERVICE_TYPE_CONVERSATION, user_input)
+
+    async def async_step_add_stt(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Add an STT service.""" 
+        return await self._add_subentry(SERVICE_TYPE_STT, user_input)
+
+    async def async_step_add_tts(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Add a TTS service."""
+        return await self._add_subentry(SERVICE_TYPE_TTS, user_input)
+
+    async def async_step_add_ai_task(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Add an AI Task service."""
+        return await self._add_subentry(SERVICE_TYPE_AI_TASK, user_input)
+
+    async def _add_subentry(
+        self, service_type: str, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Add a service subentry."""
+        available_models = self.config_entry.data.get("available_models", [])
+        
+        # Get default model based on service type
+        if service_type == SERVICE_TYPE_STT:
+            default_model = "whisper-1"
+            if available_models:
+                default_model = next((m for m in available_models if "whisper" in m.lower()), default_model)
+        elif service_type == SERVICE_TYPE_TTS:
+            default_model = "tts-1"
+            if available_models:
+                default_model = next((m for m in available_models if "tts" in m.lower()), default_model)
+        elif service_type == SERVICE_TYPE_AI_TASK:
+            default_model = "gpt-4o"
+            # Use first available model or fallback
+            if available_models:
+                default_model = available_models[0]
+        else:  # conversation
+            default_model = DEFAULT_MODEL
+            if available_models:
+                default_model = available_models[0]
+
         if user_input is not None:
-            service_type = user_input[CONF_SERVICE_TYPE]
-            
-            # Create a new config entry for the service
-            service_data = {
-                CONF_SERVICE_TYPE: service_type,
-                CONF_BASE_URL: self.config_entry.data[CONF_BASE_URL],
-                CONF_API_KEY: self.config_entry.data[CONF_API_KEY],
-                "available_models": self.config_entry.data["available_models"],
-                "parent_entry_id": self.config_entry.entry_id,
+            # Create subentry data
+            subentry_data = {
+                CONF_MODEL: user_input[CONF_MODEL],
             }
             
-            # Start the service configuration flow
+            # Add service-specific fields
             if service_type == SERVICE_TYPE_CONVERSATION:
-                return await self.async_step_conversation_config(service_data)
-            elif service_type == SERVICE_TYPE_STT:
-                return await self.async_step_stt_config(service_data)
-            elif service_type == SERVICE_TYPE_TTS:
-                return await self.async_step_tts_config(service_data)
-            elif service_type == SERVICE_TYPE_AI_TASK:
-                return await self.async_step_ai_task_config(service_data)
+                subentry_data.update({
+                    CONF_PROMPT: user_input.get(CONF_PROMPT, DEFAULT_CONF_PROMPT),
+                    CONF_MAX_TOKENS: user_input.get(CONF_MAX_TOKENS, DEFAULT_MAX_TOKENS),
+                    CONF_TEMPERATURE: user_input.get(CONF_TEMPERATURE, DEFAULT_TEMPERATURE),
+                    CONF_TOP_P: user_input.get(CONF_TOP_P, DEFAULT_TOP_P),
+                    CONF_PRESENCE_PENALTY: user_input.get(CONF_PRESENCE_PENALTY, DEFAULT_PRESENCE_PENALTY),
+                    CONF_FREQUENCY_PENALTY: user_input.get(CONF_FREQUENCY_PENALTY, DEFAULT_FREQUENCY_PENALTY),
+                })
+
+            # Create the subentry
+            await self.hass.config_entries.async_add_subentry(
+                subentry_type=service_type,
+                title=f"LiteLLM {SERVICE_TYPE_NAMES[service_type]}",
+                data=subentry_data,
+                parent_entry_id=self.config_entry.entry_id,
+            )
+            
+            return self.async_create_entry(
+                title="",
+                data={},
+            )
+
+        # Build form schema
+        schema_fields = {
+            vol.Required(CONF_MODEL, default=default_model): TextSelector(),
+        }
+        
+        # Add service-specific fields
+        if service_type == SERVICE_TYPE_CONVERSATION:
+            schema_fields.update({
+                vol.Optional(CONF_PROMPT, default=DEFAULT_CONF_PROMPT): TextSelector(
+                    TextSelectorConfig(multiline=True)
+                ),
+                vol.Optional(CONF_MAX_TOKENS, default=DEFAULT_MAX_TOKENS): NumberSelector(
+                    NumberSelectorConfig(min=1, max=4096, mode=NumberSelectorMode.BOX)
+                ),
+                vol.Optional(CONF_TEMPERATURE, default=DEFAULT_TEMPERATURE): NumberSelector(
+                    NumberSelectorConfig(min=0.0, max=2.0, step=0.1, mode=NumberSelectorMode.BOX)
+                ),
+                vol.Optional(CONF_TOP_P, default=DEFAULT_TOP_P): NumberSelector(
+                    NumberSelectorConfig(min=0.0, max=1.0, step=0.1, mode=NumberSelectorMode.BOX)
+                ),
+                vol.Optional(CONF_PRESENCE_PENALTY, default=DEFAULT_PRESENCE_PENALTY): NumberSelector(
+                    NumberSelectorConfig(min=-2.0, max=2.0, step=0.1, mode=NumberSelectorMode.BOX)
+                ),
+                vol.Optional(CONF_FREQUENCY_PENALTY, default=DEFAULT_FREQUENCY_PENALTY): NumberSelector(
+                    NumberSelectorConfig(min=-2.0, max=2.0, step=0.1, mode=NumberSelectorMode.BOX)
+                ),
+            })
 
         return self.async_show_form(
-            step_id="add_service",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_SERVICE_TYPE): vol.In(
-                        {service_type: SERVICE_TYPE_NAMES[service_type] for service_type in SERVICE_TYPES}
-                    ),
-                }
-            ),
+            step_id=f"add_{service_type}",
+            data_schema=vol.Schema(schema_fields),
         )
 
-    async def async_step_conversation_config(
-        self, service_data: dict[str, Any], user_input: dict[str, Any] | None = None
+
+class LiteLLMSubentryFlowHandler(config_entries.ConfigSubentryFlowHandler):
+    """Handle subentry flows for LiteLLM services."""
+
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Configure a conversation agent."""
-        # Use models from API instead of hardcoded list
-        available_models = service_data.get("available_models", [])
-        # Filter for conversation models if we have the full list
-        if available_models:
-            # Use all available models for conversation
-            conversation_models = available_models
+        """Handle the initial step for a subentry."""
+        if user_input is not None:
+            return self.async_create_entry(
+                title=f"LiteLLM {SERVICE_TYPE_NAMES.get(self.subentry_type, 'Service')}",
+                data=user_input,
+            )
+
+        # Get available models from parent entry
+        parent_entry = self.hass.config_entries.async_get_entry(self.parent_entry_id)
+        available_models = parent_entry.data.get("available_models", []) if parent_entry else []
+
+        # Service-specific schema
+        if self.subentry_type == SERVICE_TYPE_CONVERSATION:
+            default_model = available_models[0] if available_models else DEFAULT_MODEL
+            schema = vol.Schema({
+                vol.Required(CONF_MODEL, default=default_model): TextSelector(),
+                vol.Optional(CONF_PROMPT, default=DEFAULT_CONF_PROMPT): TextSelector(
+                    TextSelectorConfig(multiline=True)
+                ),
+                vol.Optional(CONF_MAX_TOKENS, default=DEFAULT_MAX_TOKENS): NumberSelector(
+                    NumberSelectorConfig(min=1, max=4096, mode=NumberSelectorMode.BOX)
+                ),
+                vol.Optional(CONF_TEMPERATURE, default=DEFAULT_TEMPERATURE): NumberSelector(
+                    NumberSelectorConfig(min=0.0, max=2.0, step=0.1, mode=NumberSelectorMode.BOX)
+                ),
+                vol.Optional(CONF_TOP_P, default=DEFAULT_TOP_P): NumberSelector(
+                    NumberSelectorConfig(min=0.0, max=1.0, step=0.1, mode=NumberSelectorMode.BOX)
+                ),
+                vol.Optional(CONF_PRESENCE_PENALTY, default=DEFAULT_PRESENCE_PENALTY): NumberSelector(
+                    NumberSelectorConfig(min=-2.0, max=2.0, step=0.1, mode=NumberSelectorMode.BOX)
+                ),
+                vol.Optional(CONF_FREQUENCY_PENALTY, default=DEFAULT_FREQUENCY_PENALTY): NumberSelector(
+                    NumberSelectorConfig(min=-2.0, max=2.0, step=0.1, mode=NumberSelectorMode.BOX)
+                ),
+            })
         else:
-            # Fallback to hardcoded models
-            conversation_models = SERVICE_MODEL_MAP[SERVICE_TYPE_CONVERSATION]
-        
-        if user_input is not None:
-            # Create the final config entry data
-            entry_data = {
-                CONF_SERVICE_TYPE: service_data[CONF_SERVICE_TYPE],
-                CONF_BASE_URL: service_data[CONF_BASE_URL],
-                CONF_API_KEY: service_data[CONF_API_KEY],
-                CONF_SERVICE_NAME: user_input[CONF_SERVICE_NAME],
-                CONF_MODEL: user_input[CONF_MODEL],
-            }
+            # Simplified schema for STT/TTS/AI Task
+            default_model = "whisper-1" if self.subentry_type == SERVICE_TYPE_STT else "tts-1" if self.subentry_type == SERVICE_TYPE_TTS else "gpt-4o"
+            if available_models:
+                if self.subentry_type == SERVICE_TYPE_STT:
+                    default_model = next((m for m in available_models if "whisper" in m.lower()), default_model)
+                elif self.subentry_type == SERVICE_TYPE_TTS:
+                    default_model = next((m for m in available_models if "tts" in m.lower()), default_model)
+                else:
+                    default_model = available_models[0]
             
-            # Add conversation-specific fields
-            if CONF_PROMPT in user_input:
-                entry_data[CONF_PROMPT] = user_input[CONF_PROMPT]
-            if CONF_MAX_TOKENS in user_input:
-                entry_data[CONF_MAX_TOKENS] = user_input[CONF_MAX_TOKENS]
-            if CONF_TEMPERATURE in user_input:
-                entry_data[CONF_TEMPERATURE] = user_input[CONF_TEMPERATURE]
-            if CONF_TOP_P in user_input:
-                entry_data[CONF_TOP_P] = user_input[CONF_TOP_P]
-            if CONF_PRESENCE_PENALTY in user_input:
-                entry_data[CONF_PRESENCE_PENALTY] = user_input[CONF_PRESENCE_PENALTY]
-            if CONF_FREQUENCY_PENALTY in user_input:
-                entry_data[CONF_FREQUENCY_PENALTY] = user_input[CONF_FREQUENCY_PENALTY]
-            
-            # Create the service config entry via config entries manager
-            await self.hass.config_entries.async_add(
-                domain=DOMAIN,
-                title=user_input.get(CONF_SERVICE_NAME, "LiteLLM Conversation"),
-                data=entry_data,
-            )
-            
-            return self.async_create_entry(title="Service added", data={})
+            schema = vol.Schema({
+                vol.Required(CONF_MODEL, default=default_model): TextSelector(),
+            })
 
-        # Ensure we have a safe default for the model
-        default_model = DEFAULT_MODEL
-        if conversation_models:
-            try:
-                default_model = conversation_models[0]
-            except (IndexError, TypeError):
-                default_model = DEFAULT_MODEL
-        
         return self.async_show_form(
-            step_id="conversation_config",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_SERVICE_NAME, default="LiteLLM Conversation"): str,
-                    vol.Required(CONF_MODEL, default=default_model): str,
-                    vol.Optional(CONF_PROMPT, default=DEFAULT_CONF_PROMPT): cv.template,
-                    vol.Optional(CONF_MAX_TOKENS, default=DEFAULT_MAX_TOKENS): int,
-                    vol.Optional(CONF_TEMPERATURE, default=DEFAULT_TEMPERATURE): vol.All(vol.Coerce(float), vol.Range(min=0, max=2)),
-                    vol.Optional(CONF_TOP_P, default=DEFAULT_TOP_P): vol.All(vol.Coerce(float), vol.Range(min=0, max=1)),
-                    vol.Optional(CONF_PRESENCE_PENALTY, default=DEFAULT_PRESENCE_PENALTY): vol.All(vol.Coerce(float), vol.Range(min=-2, max=2)),
-                    vol.Optional(CONF_FREQUENCY_PENALTY, default=DEFAULT_FREQUENCY_PENALTY): vol.All(vol.Coerce(float), vol.Range(min=-2, max=2)),
-                }
-            ),
+            step_id="user",
+            data_schema=schema,
         )
 
-    async def async_step_stt_config(
-        self, service_data: dict[str, Any], user_input: dict[str, Any] | None = None
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Configure an STT service."""
-        # Use models from API that support STT, fallback to hardcoded
-        available_models = service_data.get("available_models", [])
-        # Filter for STT models or use fallback
-        stt_models = [model for model in available_models if "whisper" in model.lower()] if available_models else SERVICE_MODEL_MAP[SERVICE_TYPE_STT]
-        if not stt_models:
-            stt_models = SERVICE_MODEL_MAP[SERVICE_TYPE_STT]
+        """Handle reconfiguration of a subentry."""
+        subentry = self._get_reconfigure_subentry()
         
         if user_input is not None:
-            # Create the final config entry data
-            entry_data = {
-                CONF_SERVICE_TYPE: service_data[CONF_SERVICE_TYPE],
-                CONF_BASE_URL: service_data[CONF_BASE_URL],
-                CONF_API_KEY: service_data[CONF_API_KEY],
-                CONF_SERVICE_NAME: user_input[CONF_SERVICE_NAME],
-                CONF_MODEL: user_input[CONF_MODEL],
-            }
-            
-            # Create the service config entry via config entries manager
-            await self.hass.config_entries.async_add(
-                domain=DOMAIN,
-                title=user_input.get(CONF_SERVICE_NAME, "LiteLLM STT"),
-                data=entry_data,
+            return self.async_update_subentry(
+                subentry=subentry,
+                data=user_input,
             )
-            
-            return self.async_create_entry(title="Service added", data={})
 
-        # Ensure we have a safe default for the model
-        default_model = "whisper-1"
-        if stt_models:
-            try:
-                default_model = stt_models[0]
-            except (IndexError, TypeError):
-                default_model = "whisper-1"
+        # Get current data for defaults
+        current_data = subentry.data
         
+        # Get available models from parent entry
+        parent_entry = self.hass.config_entries.async_get_entry(self.parent_entry_id)
+        available_models = parent_entry.data.get("available_models", []) if parent_entry else []
+
+        # Build schema with current values as defaults
+        if self.subentry_type == SERVICE_TYPE_CONVERSATION:
+            schema = vol.Schema({
+                vol.Required(CONF_MODEL, default=current_data.get(CONF_MODEL, DEFAULT_MODEL)): TextSelector(),
+                vol.Optional(CONF_PROMPT, default=current_data.get(CONF_PROMPT, DEFAULT_CONF_PROMPT)): TextSelector(
+                    TextSelectorConfig(multiline=True)
+                ),
+                vol.Optional(CONF_MAX_TOKENS, default=current_data.get(CONF_MAX_TOKENS, DEFAULT_MAX_TOKENS)): NumberSelector(
+                    NumberSelectorConfig(min=1, max=4096, mode=NumberSelectorMode.BOX)
+                ),
+                vol.Optional(CONF_TEMPERATURE, default=current_data.get(CONF_TEMPERATURE, DEFAULT_TEMPERATURE)): NumberSelector(
+                    NumberSelectorConfig(min=0.0, max=2.0, step=0.1, mode=NumberSelectorMode.BOX)
+                ),
+                vol.Optional(CONF_TOP_P, default=current_data.get(CONF_TOP_P, DEFAULT_TOP_P)): NumberSelector(
+                    NumberSelectorConfig(min=0.0, max=1.0, step=0.1, mode=NumberSelectorMode.BOX)
+                ),
+                vol.Optional(CONF_PRESENCE_PENALTY, default=current_data.get(CONF_PRESENCE_PENALTY, DEFAULT_PRESENCE_PENALTY)): NumberSelector(
+                    NumberSelectorConfig(min=-2.0, max=2.0, step=0.1, mode=NumberSelectorMode.BOX)
+                ),
+                vol.Optional(CONF_FREQUENCY_PENALTY, default=current_data.get(CONF_FREQUENCY_PENALTY, DEFAULT_FREQUENCY_PENALTY)): NumberSelector(
+                    NumberSelectorConfig(min=-2.0, max=2.0, step=0.1, mode=NumberSelectorMode.BOX)
+                ),
+            })
+        else:
+            schema = vol.Schema({
+                vol.Required(CONF_MODEL, default=current_data.get(CONF_MODEL, "")): TextSelector(),
+            })
+
         return self.async_show_form(
-            step_id="stt_config",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_SERVICE_NAME, default="LiteLLM STT"): str,
-                    vol.Required(CONF_MODEL, default=default_model): str,
-                }
-            ),
-        )
-
-    async def async_step_tts_config(
-        self, service_data: dict[str, Any], user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Configure a TTS service."""
-        # Use models from API that support TTS, fallback to hardcoded
-        available_models = service_data.get("available_models", [])
-        # Filter for TTS models or use fallback
-        tts_models = [model for model in available_models if "tts" in model.lower()] if available_models else SERVICE_MODEL_MAP[SERVICE_TYPE_TTS]
-        if not tts_models:
-            tts_models = SERVICE_MODEL_MAP[SERVICE_TYPE_TTS]
-        
-        if user_input is not None:
-            # Create the final config entry data
-            entry_data = {
-                CONF_SERVICE_TYPE: service_data[CONF_SERVICE_TYPE],
-                CONF_BASE_URL: service_data[CONF_BASE_URL],
-                CONF_API_KEY: service_data[CONF_API_KEY],
-                CONF_SERVICE_NAME: user_input[CONF_SERVICE_NAME],
-                CONF_MODEL: user_input[CONF_MODEL],
-            }
-            
-            # Create the service config entry via config entries manager
-            await self.hass.config_entries.async_add(
-                domain=DOMAIN,
-                title=user_input.get(CONF_SERVICE_NAME, "LiteLLM TTS"),
-                data=entry_data,
-            )
-            
-            return self.async_create_entry(title="Service added", data={})
-
-        # Ensure we have a safe default for the model
-        default_model = "tts-1"
-        if tts_models:
-            try:
-                default_model = tts_models[0]
-            except (IndexError, TypeError):
-                default_model = "tts-1"
-        
-        return self.async_show_form(
-            step_id="tts_config",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_SERVICE_NAME, default="LiteLLM TTS"): str,
-                    vol.Required(CONF_MODEL, default=default_model): str,
-                }
-            ),
-        )
-
-    async def async_step_ai_task_config(
-        self, service_data: dict[str, Any], user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Configure an AI Task service."""
-        # Use models from API that support vision, fallback to hardcoded
-        available_models = service_data.get("available_models", [])
-        # For AI Task, prefer vision models or use all models as fallback
-        vision_models = available_models if available_models else SERVICE_MODEL_MAP[SERVICE_TYPE_AI_TASK]
-        
-        if user_input is not None:
-            # Create the final config entry data
-            entry_data = {
-                CONF_SERVICE_TYPE: service_data[CONF_SERVICE_TYPE],
-                CONF_BASE_URL: service_data[CONF_BASE_URL],
-                CONF_API_KEY: service_data[CONF_API_KEY],
-                CONF_SERVICE_NAME: user_input[CONF_SERVICE_NAME],
-                CONF_MODEL: user_input[CONF_MODEL],
-            }
-            
-            # Create the service config entry via config entries manager
-            await self.hass.config_entries.async_add(
-                domain=DOMAIN,
-                title=user_input.get(CONF_SERVICE_NAME, "LiteLLM AI Task"),
-                data=entry_data,
-            )
-            
-            return self.async_create_entry(title="Service added", data={})
-
-        # Ensure we have a safe default for the model
-        default_model = "gpt-4o"
-        if vision_models:
-            try:
-                default_model = vision_models[0]
-            except (IndexError, TypeError):
-                default_model = "gpt-4o"
-        
-        return self.async_show_form(
-            step_id="ai_task_config",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_SERVICE_NAME, default="LiteLLM AI Task"): str,
-                    vol.Required(CONF_MODEL, default=default_model): str,
-                }
-            ),
+            step_id="reconfigure",
+            data_schema=schema,
         )
 
 
