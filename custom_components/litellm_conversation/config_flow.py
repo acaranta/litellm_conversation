@@ -364,7 +364,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_SERVICE_NAME, default="LiteLLM Conversation"): str,
-                    vol.Required(CONF_MODEL, default=conversation_models[0] if conversation_models else DEFAULT_MODEL, description="Model name (select from dropdown or enter custom model name)"): str,
+                    vol.Required(CONF_MODEL, default=conversation_models[0] if conversation_models else DEFAULT_MODEL): str,
                     vol.Optional(CONF_PROMPT, default=DEFAULT_CONF_PROMPT): cv.template,
                     vol.Optional(CONF_MAX_TOKENS, default=DEFAULT_MAX_TOKENS): int,
                     vol.Optional(CONF_TEMPERATURE, default=DEFAULT_TEMPERATURE): vol.All(vol.Coerce(float), vol.Range(min=0, max=2)),
@@ -403,7 +403,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_SERVICE_NAME, default="LiteLLM STT"): str,
-                    vol.Required(CONF_MODEL, default=stt_models[0] if stt_models else "whisper-1", description="Model name (e.g., whisper-1 or custom model)"): str,
+                    vol.Required(CONF_MODEL, default=stt_models[0] if stt_models else "whisper-1"): str,
                 }
             ),
         )
@@ -436,7 +436,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_SERVICE_NAME, default="LiteLLM TTS"): str,
-                    vol.Required(CONF_MODEL, default=tts_models[0] if tts_models else "tts-1", description="Model name (e.g., tts-1, tts-1-hd, or custom model)"): str,
+                    vol.Required(CONF_MODEL, default=tts_models[0] if tts_models else "tts-1"): str,
                 }
             ),
         )
@@ -467,7 +467,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_SERVICE_NAME, default="LiteLLM AI Task"): str,
-                    vol.Required(CONF_MODEL, default=vision_models[0] if vision_models else "gpt-4o", description="Vision model name (e.g., gpt-4o, claude-3-5-sonnet, or custom model)"): str,
+                    vol.Required(CONF_MODEL, default=vision_models[0] if vision_models else "gpt-4o"): str,
                 }
             ),
         )
