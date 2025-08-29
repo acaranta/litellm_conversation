@@ -1,9 +1,11 @@
-name: Release
+name: Release (Manual Tag)
 
 on:
   push:
     tags:
       - "v*.*.*"
+  # Only trigger if tag was pushed manually (not by version-bump workflow)
+  workflow_dispatch:
 
 jobs:
   release:

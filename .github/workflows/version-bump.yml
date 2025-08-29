@@ -1,4 +1,4 @@
-name: Version Bump
+name: Version Bump and Release
 
 on:
   workflow_dispatch:
@@ -95,3 +95,67 @@ jobs:
         run: |
           git tag -a "v${{ steps.version.outputs.new_version }}" -m "Release v${{ steps.version.outputs.new_version }}"
           git push origin "v${{ steps.version.outputs.new_version }}"
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          cat > release_notes.md << 'EOF'
+          # LiteLLM Conversation v${{ steps.version.outputs.new_version }}
+          
+          ## Features
+          
+          - **Multi-instance Support**: Create separate service instances for Conversation, STT, TTS, and AI Task services
+          - **Flexible AI Model Support**: Works with 100+ LLM providers through LiteLLM proxy
+          - **Custom Base URL**: Configure your LiteLLM proxy endpoint
+          - **Voice Integration**: Full STT and TTS support for voice conversations
+          - **AI Task Service**: Generate data and analyze images using vision models
+          - **Vision Model Support**: Process camera feeds and images with models like GPT-4 Vision, Claude 3 Vision, Gemini Pro Vision
+          - **OpenAI Compatibility**: Drop-in replacement for OpenAI Conversation component
+          
+          ## Installation
+          
+          ### HACS Installation (Recommended)
+          
+          1. Open HACS in your Home Assistant instance
+          2. Go to "Integrations"
+          3. Click the three dots menu in the top right
+          4. Select "Custom repositories"
+          5. Add this repository URL: `https://github.com/acaranta/litellm_conversation`
+          6. Select "Integration" as the category
+          7. Click "Add"
+          8. Search for "LiteLLM Conversation" in HACS
+          9. Click "Install"
+          10. Restart Home Assistant
+          
+          ## Supported Services
+          
+          - **Conversation Agent**: Full conversation support with any LLM model
+          - **Speech-to-Text (STT)**: Audio transcription using Whisper and compatible models
+          - **Text-to-Speech (TTS)**: Voice synthesis with various voice options
+          - **AI Task**: Data generation and image analysis with vision models
+          
+          ## Technical Notes
+          
+          This release follows semantic versioning for HACS compatibility. The version number matches the `manifest.json` version.
+          
+          For full documentation, see the [README](https://github.com/acaranta/litellm_conversation/blob/main/README.md).
+          EOF
+
+      - name: Create ZIP archive for HACS
+        run: |
+          cd custom_components/litellm_conversation
+          zip -r ../../litellm_conversation.zip .
+          cd ../..
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.version.outputs.new_version }}
+          name: v${{ steps.version.outputs.new_version }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          files: |
+            litellm_conversation.zip
