@@ -76,29 +76,21 @@ jobs:
           For full documentation, see the [README](https://github.com/acaranta/litellm_conversation/blob/main/README.md).
           EOF
 
-      - name: Create Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: ${{ github.ref_name }}
-          body_path: release_notes.md
-          draft: false
-          prerelease: false
-
       - name: Create ZIP archive for HACS
         run: |
           cd custom_components/litellm_conversation
           zip -r ../../litellm_conversation.zip .
           cd ../..
 
-      - name: Upload ZIP to Release
-        uses: actions/upload-release-asset@v1
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./litellm_conversation.zip
-          asset_name: litellm_conversation.zip
-          asset_content_type: application/zip
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          files: |
+            litellm_conversation.zip
