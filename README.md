@@ -255,6 +255,41 @@ logger:
     custom_components.litellm_conversation: debug
 ```
 
+## Versioning and Releases
+
+This integration follows [Semantic Versioning](https://semver.org/) for HACS compatibility:
+
+- **Major** (X.0.0): Breaking changes that require user intervention
+- **Minor** (X.Y.0): New features, backward compatible  
+- **Patch** (X.Y.Z): Bug fixes, backward compatible
+
+### HACS Updates
+
+HACS automatically detects new releases through GitHub releases. When a new version is available:
+
+1. HACS will show an update notification
+2. Click "Update" in HACS to install the new version
+3. Restart Home Assistant to apply changes
+
+### Release Process
+
+Releases are automated through GitHub Actions:
+
+1. **Automatic Release**: Push a git tag (e.g., `v1.1.0`) to trigger automatic release creation
+2. **Manual Version Bump**: Use the "Version Bump" workflow in GitHub Actions to bump version and create release
+3. **Version Consistency**: The workflow validates that git tag version matches `manifest.json` version
+
+### Current Version
+
+The current version is defined in [`custom_components/litellm_conversation/manifest.json`](custom_components/litellm_conversation/manifest.json) and should match the latest git tag.
+
+### Development Builds
+
+For development or beta testing:
+- Pre-release versions use suffixes like `1.1.0-beta.1`
+- Mark GitHub releases as "pre-release" for testing versions
+- HACS can install pre-releases if configured to show beta versions
+
 ## Contributing
 
 If you want to contribute to this please read the [Contribution guidelines](CONTRIBUTING.md)

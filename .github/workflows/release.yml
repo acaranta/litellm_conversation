@@ -1,0 +1,104 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate version consistency
+        run: |
+          # Extract version from tag (remove 'v' prefix)
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          echo "Tag version: $TAG_VERSION"
+          
+          # Extract version from manifest.json
+          MANIFEST_VERSION=$(python3 -c "import json; print(json.load(open('custom_components/litellm_conversation/manifest.json'))['version'])")
+          echo "Manifest version: $MANIFEST_VERSION"
+          
+          # Compare versions
+          if [ "$TAG_VERSION" != "$MANIFEST_VERSION" ]; then
+            echo "❌ Version mismatch: Tag version ($TAG_VERSION) does not match manifest.json version ($MANIFEST_VERSION)"
+            exit 1
+          fi
+          echo "✅ Version consistency validated"
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          cat > release_notes.md << 'EOF'
+          # LiteLLM Conversation ${{ github.ref_name }}
+          
+          ## Features
+          
+          - **Multi-instance Support**: Create separate service instances for Conversation, STT, TTS, and AI Task services
+          - **Flexible AI Model Support**: Works with 100+ LLM providers through LiteLLM proxy
+          - **Custom Base URL**: Configure your LiteLLM proxy endpoint
+          - **Voice Integration**: Full STT and TTS support for voice conversations
+          - **AI Task Service**: Generate data and analyze images using vision models
+          - **Vision Model Support**: Process camera feeds and images with models like GPT-4 Vision, Claude 3 Vision, Gemini Pro Vision
+          - **OpenAI Compatibility**: Drop-in replacement for OpenAI Conversation component
+          
+          ## Installation
+          
+          ### HACS Installation (Recommended)
+          
+          1. Open HACS in your Home Assistant instance
+          2. Go to "Integrations"
+          3. Click the three dots menu in the top right
+          4. Select "Custom repositories"
+          5. Add this repository URL: `https://github.com/acaranta/litellm_conversation`
+          6. Select "Integration" as the category
+          7. Click "Add"
+          8. Search for "LiteLLM Conversation" in HACS
+          9. Click "Install"
+          10. Restart Home Assistant
+          
+          ## Supported Services
+          
+          - **Conversation Agent**: Full conversation support with any LLM model
+          - **Speech-to-Text (STT)**: Audio transcription using Whisper and compatible models
+          - **Text-to-Speech (TTS)**: Voice synthesis with various voice options
+          - **AI Task**: Data generation and image analysis with vision models
+          
+          ## Technical Notes
+          
+          This release follows semantic versioning for HACS compatibility. The version number matches the `manifest.json` version.
+          
+          For full documentation, see the [README](https://github.com/acaranta/litellm_conversation/blob/main/README.md).
+          EOF
+
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref_name }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+
+      - name: Create ZIP archive for HACS
+        run: |
+          cd custom_components/litellm_conversation
+          zip -r ../../litellm_conversation.zip .
+          cd ../..
+
+      - name: Upload ZIP to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./litellm_conversation.zip
+          asset_name: litellm_conversation.zip
+          asset_content_type: application/zip
