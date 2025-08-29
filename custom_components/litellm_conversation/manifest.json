@@ -1,7 +1,9 @@
 {
   "domain": "litellm_conversation",
   "name": "LiteLLM Conversation",
-  "codeowners": ["@acaranta"],
+  "codeowners": [
+    "@acaranta"
+  ],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/acaranta/litellm_conversation",
