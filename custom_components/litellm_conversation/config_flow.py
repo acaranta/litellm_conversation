@@ -10,6 +10,7 @@ import voluptuous as vol
 
 from homeassistant import config_entries, core
 from homeassistant.const import CONF_API_KEY
+from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
@@ -105,13 +106,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> OptionsFlowHandler:
         """Create the options flow."""
         return OptionsFlowHandler(config_entry)
-
-    @staticmethod
-    def async_get_supported_subentry_types(
-        config_entry: config_entries.ConfigEntry,
-    ) -> list[str]:
-        """Return supported subentry types."""
-        return SUPPORTED_SUBENTRY_TYPES
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -336,119 +330,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             data_schema=vol.Schema(schema_fields),
         )
 
-
-class LiteLLMSubentryFlowHandler(config_entries.ConfigSubentryFlowHandler):
-    """Handle subentry flows for LiteLLM services."""
-
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Handle the initial step for a subentry."""
-        if user_input is not None:
-            return self.async_create_entry(
-                title=f"LiteLLM {SERVICE_TYPE_NAMES.get(self.subentry_type, 'Service')}",
-                data=user_input,
-            )
-
-        # Get available models from parent entry
-        parent_entry = self.hass.config_entries.async_get_entry(self.parent_entry_id)
-        available_models = parent_entry.data.get("available_models", []) if parent_entry else []
-
-        # Service-specific schema
-        if self.subentry_type == SERVICE_TYPE_CONVERSATION:
-            default_model = available_models[0] if available_models else DEFAULT_MODEL
-            schema = vol.Schema({
-                vol.Required(CONF_MODEL, default=default_model): TextSelector(),
-                vol.Optional(CONF_PROMPT, default=DEFAULT_CONF_PROMPT): TextSelector(
-                    TextSelectorConfig(multiline=True)
-                ),
-                vol.Optional(CONF_MAX_TOKENS, default=DEFAULT_MAX_TOKENS): NumberSelector(
-                    NumberSelectorConfig(min=1, max=4096, mode=NumberSelectorMode.BOX)
-                ),
-                vol.Optional(CONF_TEMPERATURE, default=DEFAULT_TEMPERATURE): NumberSelector(
-                    NumberSelectorConfig(min=0.0, max=2.0, step=0.1, mode=NumberSelectorMode.BOX)
-                ),
-                vol.Optional(CONF_TOP_P, default=DEFAULT_TOP_P): NumberSelector(
-                    NumberSelectorConfig(min=0.0, max=1.0, step=0.1, mode=NumberSelectorMode.BOX)
-                ),
-                vol.Optional(CONF_PRESENCE_PENALTY, default=DEFAULT_PRESENCE_PENALTY): NumberSelector(
-                    NumberSelectorConfig(min=-2.0, max=2.0, step=0.1, mode=NumberSelectorMode.BOX)
-                ),
-                vol.Optional(CONF_FREQUENCY_PENALTY, default=DEFAULT_FREQUENCY_PENALTY): NumberSelector(
-                    NumberSelectorConfig(min=-2.0, max=2.0, step=0.1, mode=NumberSelectorMode.BOX)
-                ),
-            })
-        else:
-            # Simplified schema for STT/TTS/AI Task
-            default_model = "whisper-1" if self.subentry_type == SERVICE_TYPE_STT else "tts-1" if self.subentry_type == SERVICE_TYPE_TTS else "gpt-4o"
-            if available_models:
-                if self.subentry_type == SERVICE_TYPE_STT:
-                    default_model = next((m for m in available_models if "whisper" in m.lower()), default_model)
-                elif self.subentry_type == SERVICE_TYPE_TTS:
-                    default_model = next((m for m in available_models if "tts" in m.lower()), default_model)
-                else:
-                    default_model = available_models[0]
-            
-            schema = vol.Schema({
-                vol.Required(CONF_MODEL, default=default_model): TextSelector(),
-            })
-
-        return self.async_show_form(
-            step_id="user",
-            data_schema=schema,
-        )
-
-    async def async_step_reconfigure(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Handle reconfiguration of a subentry."""
-        subentry = self._get_reconfigure_subentry()
-        
-        if user_input is not None:
-            return self.async_update_subentry(
-                subentry=subentry,
-                data=user_input,
-            )
-
-        # Get current data for defaults
-        current_data = subentry.data
-        
-        # Get available models from parent entry
-        parent_entry = self.hass.config_entries.async_get_entry(self.parent_entry_id)
-        available_models = parent_entry.data.get("available_models", []) if parent_entry else []
-
-        # Build schema with current values as defaults
-        if self.subentry_type == SERVICE_TYPE_CONVERSATION:
-            schema = vol.Schema({
-                vol.Required(CONF_MODEL, default=current_data.get(CONF_MODEL, DEFAULT_MODEL)): TextSelector(),
-                vol.Optional(CONF_PROMPT, default=current_data.get(CONF_PROMPT, DEFAULT_CONF_PROMPT)): TextSelector(
-                    TextSelectorConfig(multiline=True)
-                ),
-                vol.Optional(CONF_MAX_TOKENS, default=current_data.get(CONF_MAX_TOKENS, DEFAULT_MAX_TOKENS)): NumberSelector(
-                    NumberSelectorConfig(min=1, max=4096, mode=NumberSelectorMode.BOX)
-                ),
-                vol.Optional(CONF_TEMPERATURE, default=current_data.get(CONF_TEMPERATURE, DEFAULT_TEMPERATURE)): NumberSelector(
-                    NumberSelectorConfig(min=0.0, max=2.0, step=0.1, mode=NumberSelectorMode.BOX)
-                ),
-                vol.Optional(CONF_TOP_P, default=current_data.get(CONF_TOP_P, DEFAULT_TOP_P)): NumberSelector(
-                    NumberSelectorConfig(min=0.0, max=1.0, step=0.1, mode=NumberSelectorMode.BOX)
-                ),
-                vol.Optional(CONF_PRESENCE_PENALTY, default=current_data.get(CONF_PRESENCE_PENALTY, DEFAULT_PRESENCE_PENALTY)): NumberSelector(
-                    NumberSelectorConfig(min=-2.0, max=2.0, step=0.1, mode=NumberSelectorMode.BOX)
-                ),
-                vol.Optional(CONF_FREQUENCY_PENALTY, default=current_data.get(CONF_FREQUENCY_PENALTY, DEFAULT_FREQUENCY_PENALTY)): NumberSelector(
-                    NumberSelectorConfig(min=-2.0, max=2.0, step=0.1, mode=NumberSelectorMode.BOX)
-                ),
-            })
-        else:
-            schema = vol.Schema({
-                vol.Required(CONF_MODEL, default=current_data.get(CONF_MODEL, "")): TextSelector(),
-            })
-
-        return self.async_show_form(
-            step_id="reconfigure",
-            data_schema=schema,
-        )
 
 
 class CannotConnect(Exception):
