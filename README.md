@@ -56,6 +56,40 @@ Platform | Description
 5. Place the files you downloaded in the new directory (folder) you created
 6. Restart Home Assistant
 
+## Integration Icon
+
+The LiteLLM Conversation integration uses the official LiteLLM rocket logo. For the icon to display properly in Home Assistant and HACS, it needs to be submitted to the [Home Assistant Brands Repository](https://github.com/home-assistant/brands).
+
+### Current Icon Status: ⚠️ Pending Submission
+
+The integration currently **does not display an icon** in the Home Assistant UI. This is normal for custom integrations that haven't been added to the brands repository yet.
+
+### Icon Files Prepared
+
+Icon files ready for brands repository submission are available in the `/brands/` directory:
+- `icon.png` - Standard resolution (requires resizing to 256x256px)
+- `icon@2x.png` - High DPI resolution (requires resizing to 512x512px)
+
+**Note**: These files need to be properly resized and optimized before submission. See `/brands/README.md` for detailed instructions.
+
+### How to Add the Icon
+
+To enable the icon display:
+
+1. **Fork the [Home Assistant Brands Repository](https://github.com/home-assistant/brands)**
+2. **Properly resize the icons** (see `/brands/README.md` for instructions)
+3. **Submit a Pull Request** adding the icons to `custom_integrations/litellm_conversation/`
+
+After approval, the icon will automatically appear at:
+- `https://brands.home-assistant.io/litellm_conversation/icon.png`
+
+### Manual Icon Setup (Advanced)
+
+If you want the icon to appear immediately:
+1. Resize the icons in `/brands/custom_integrations/litellm_conversation/` to proper dimensions
+2. Optimize the PNG files  
+3. Host them at the expected URLs or create a local icon pack
+
 ## Configuration
 
 ### Setting up LiteLLM Proxy
