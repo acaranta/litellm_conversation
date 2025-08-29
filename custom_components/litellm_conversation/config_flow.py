@@ -283,7 +283,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize LiteLLM Conversation options flow."""
-        self.config_entry = config_entry
+        super().__init__()
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -350,11 +350,14 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             service_data.update(user_input)
             
-            # Create the service config entry directly
-            return self.async_create_entry(
+            # Create the service config entry via config entries manager
+            await self.hass.config_entries.async_add(
+                domain=DOMAIN,
                 title=user_input.get(CONF_SERVICE_NAME, "LiteLLM Conversation"),
                 data=service_data,
             )
+            
+            return self.async_create_entry(title="Service added", data={})
 
         return self.async_show_form(
             step_id="conversation_config",
@@ -386,11 +389,14 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             service_data.update(user_input)
             
-            # Create the service config entry directly
-            return self.async_create_entry(
+            # Create the service config entry via config entries manager
+            await self.hass.config_entries.async_add(
+                domain=DOMAIN,
                 title=user_input.get(CONF_SERVICE_NAME, "LiteLLM STT"),
                 data=service_data,
             )
+            
+            return self.async_create_entry(title="Service added", data={})
 
         return self.async_show_form(
             step_id="stt_config",
@@ -416,11 +422,14 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             service_data.update(user_input)
             
-            # Create the service config entry directly
-            return self.async_create_entry(
+            # Create the service config entry via config entries manager
+            await self.hass.config_entries.async_add(
+                domain=DOMAIN,
                 title=user_input.get(CONF_SERVICE_NAME, "LiteLLM TTS"),
                 data=service_data,
             )
+            
+            return self.async_create_entry(title="Service added", data={})
 
         return self.async_show_form(
             step_id="tts_config",
@@ -444,11 +453,14 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             service_data.update(user_input)
             
-            # Create the service config entry directly
-            return self.async_create_entry(
+            # Create the service config entry via config entries manager
+            await self.hass.config_entries.async_add(
+                domain=DOMAIN,
                 title=user_input.get(CONF_SERVICE_NAME, "LiteLLM AI Task"),
                 data=service_data,
             )
+            
+            return self.async_create_entry(title="Service added", data={})
 
         return self.async_show_form(
             step_id="ai_task_config",
