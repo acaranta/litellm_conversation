@@ -210,12 +210,12 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         """Manage the options."""
         return self.async_show_menu(
             step_id="init",
-            menu_options=[
-                "add_conversation",
-                "add_stt", 
-                "add_tts",
-                "add_ai_task",
-            ],
+            menu_options={
+                "add_conversation": "Add Conversation Agent",
+                "add_stt": "Add Speech-to-Text Service", 
+                "add_tts": "Add Text-to-Speech Service",
+                "add_ai_task": "Add AI Task Service",
+            },
         )
 
     async def async_step_add_conversation(
