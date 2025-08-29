@@ -348,23 +348,52 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             conversation_models = SERVICE_MODEL_MAP[SERVICE_TYPE_CONVERSATION]
         
         if user_input is not None:
-            service_data.update(user_input)
+            # Create the final config entry data
+            entry_data = {
+                CONF_SERVICE_TYPE: service_data[CONF_SERVICE_TYPE],
+                CONF_BASE_URL: service_data[CONF_BASE_URL],
+                CONF_API_KEY: service_data[CONF_API_KEY],
+                CONF_SERVICE_NAME: user_input[CONF_SERVICE_NAME],
+                CONF_MODEL: user_input[CONF_MODEL],
+            }
+            
+            # Add conversation-specific fields
+            if CONF_PROMPT in user_input:
+                entry_data[CONF_PROMPT] = user_input[CONF_PROMPT]
+            if CONF_MAX_TOKENS in user_input:
+                entry_data[CONF_MAX_TOKENS] = user_input[CONF_MAX_TOKENS]
+            if CONF_TEMPERATURE in user_input:
+                entry_data[CONF_TEMPERATURE] = user_input[CONF_TEMPERATURE]
+            if CONF_TOP_P in user_input:
+                entry_data[CONF_TOP_P] = user_input[CONF_TOP_P]
+            if CONF_PRESENCE_PENALTY in user_input:
+                entry_data[CONF_PRESENCE_PENALTY] = user_input[CONF_PRESENCE_PENALTY]
+            if CONF_FREQUENCY_PENALTY in user_input:
+                entry_data[CONF_FREQUENCY_PENALTY] = user_input[CONF_FREQUENCY_PENALTY]
             
             # Create the service config entry via config entries manager
             await self.hass.config_entries.async_add(
                 domain=DOMAIN,
                 title=user_input.get(CONF_SERVICE_NAME, "LiteLLM Conversation"),
-                data=service_data,
+                data=entry_data,
             )
             
             return self.async_create_entry(title="Service added", data={})
 
+        # Ensure we have a safe default for the model
+        default_model = DEFAULT_MODEL
+        if conversation_models:
+            try:
+                default_model = conversation_models[0]
+            except (IndexError, TypeError):
+                default_model = DEFAULT_MODEL
+        
         return self.async_show_form(
             step_id="conversation_config",
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_SERVICE_NAME, default="LiteLLM Conversation"): str,
-                    vol.Required(CONF_MODEL, default=conversation_models[0] if conversation_models else DEFAULT_MODEL): str,
+                    vol.Required(CONF_MODEL, default=default_model): str,
                     vol.Optional(CONF_PROMPT, default=DEFAULT_CONF_PROMPT): cv.template,
                     vol.Optional(CONF_MAX_TOKENS, default=DEFAULT_MAX_TOKENS): int,
                     vol.Optional(CONF_TEMPERATURE, default=DEFAULT_TEMPERATURE): vol.All(vol.Coerce(float), vol.Range(min=0, max=2)),
@@ -387,23 +416,38 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             stt_models = SERVICE_MODEL_MAP[SERVICE_TYPE_STT]
         
         if user_input is not None:
-            service_data.update(user_input)
+            # Create the final config entry data
+            entry_data = {
+                CONF_SERVICE_TYPE: service_data[CONF_SERVICE_TYPE],
+                CONF_BASE_URL: service_data[CONF_BASE_URL],
+                CONF_API_KEY: service_data[CONF_API_KEY],
+                CONF_SERVICE_NAME: user_input[CONF_SERVICE_NAME],
+                CONF_MODEL: user_input[CONF_MODEL],
+            }
             
             # Create the service config entry via config entries manager
             await self.hass.config_entries.async_add(
                 domain=DOMAIN,
                 title=user_input.get(CONF_SERVICE_NAME, "LiteLLM STT"),
-                data=service_data,
+                data=entry_data,
             )
             
             return self.async_create_entry(title="Service added", data={})
 
+        # Ensure we have a safe default for the model
+        default_model = "whisper-1"
+        if stt_models:
+            try:
+                default_model = stt_models[0]
+            except (IndexError, TypeError):
+                default_model = "whisper-1"
+        
         return self.async_show_form(
             step_id="stt_config",
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_SERVICE_NAME, default="LiteLLM STT"): str,
-                    vol.Required(CONF_MODEL, default=stt_models[0] if stt_models else "whisper-1"): str,
+                    vol.Required(CONF_MODEL, default=default_model): str,
                 }
             ),
         )
@@ -420,23 +464,38 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             tts_models = SERVICE_MODEL_MAP[SERVICE_TYPE_TTS]
         
         if user_input is not None:
-            service_data.update(user_input)
+            # Create the final config entry data
+            entry_data = {
+                CONF_SERVICE_TYPE: service_data[CONF_SERVICE_TYPE],
+                CONF_BASE_URL: service_data[CONF_BASE_URL],
+                CONF_API_KEY: service_data[CONF_API_KEY],
+                CONF_SERVICE_NAME: user_input[CONF_SERVICE_NAME],
+                CONF_MODEL: user_input[CONF_MODEL],
+            }
             
             # Create the service config entry via config entries manager
             await self.hass.config_entries.async_add(
                 domain=DOMAIN,
                 title=user_input.get(CONF_SERVICE_NAME, "LiteLLM TTS"),
-                data=service_data,
+                data=entry_data,
             )
             
             return self.async_create_entry(title="Service added", data={})
 
+        # Ensure we have a safe default for the model
+        default_model = "tts-1"
+        if tts_models:
+            try:
+                default_model = tts_models[0]
+            except (IndexError, TypeError):
+                default_model = "tts-1"
+        
         return self.async_show_form(
             step_id="tts_config",
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_SERVICE_NAME, default="LiteLLM TTS"): str,
-                    vol.Required(CONF_MODEL, default=tts_models[0] if tts_models else "tts-1"): str,
+                    vol.Required(CONF_MODEL, default=default_model): str,
                 }
             ),
         )
@@ -451,23 +510,38 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         vision_models = available_models if available_models else SERVICE_MODEL_MAP[SERVICE_TYPE_AI_TASK]
         
         if user_input is not None:
-            service_data.update(user_input)
+            # Create the final config entry data
+            entry_data = {
+                CONF_SERVICE_TYPE: service_data[CONF_SERVICE_TYPE],
+                CONF_BASE_URL: service_data[CONF_BASE_URL],
+                CONF_API_KEY: service_data[CONF_API_KEY],
+                CONF_SERVICE_NAME: user_input[CONF_SERVICE_NAME],
+                CONF_MODEL: user_input[CONF_MODEL],
+            }
             
             # Create the service config entry via config entries manager
             await self.hass.config_entries.async_add(
                 domain=DOMAIN,
                 title=user_input.get(CONF_SERVICE_NAME, "LiteLLM AI Task"),
-                data=service_data,
+                data=entry_data,
             )
             
             return self.async_create_entry(title="Service added", data={})
 
+        # Ensure we have a safe default for the model
+        default_model = "gpt-4o"
+        if vision_models:
+            try:
+                default_model = vision_models[0]
+            except (IndexError, TypeError):
+                default_model = "gpt-4o"
+        
         return self.async_show_form(
             step_id="ai_task_config",
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_SERVICE_NAME, default="LiteLLM AI Task"): str,
-                    vol.Required(CONF_MODEL, default=vision_models[0] if vision_models else "gpt-4o"): str,
+                    vol.Required(CONF_MODEL, default=default_model): str,
                 }
             ),
         )
