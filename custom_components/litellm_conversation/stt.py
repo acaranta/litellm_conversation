@@ -28,7 +28,14 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_BASE_URL, DOMAIN
+from .const import (
+    CONF_BASE_URL,
+    CONF_MODEL,
+    CONF_SERVICE_NAME,
+    CONF_SERVICE_TYPE,
+    DOMAIN,
+    SERVICE_TYPE_STT,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,7 +46,9 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up LiteLLM STT platform via config entry."""
-    async_add_entities([LiteLLMSTTEntity(config_entry)])
+    # Only set up if this is an STT service entry
+    if config_entry.data.get(CONF_SERVICE_TYPE) == SERVICE_TYPE_STT:
+        async_add_entities([LiteLLMSTTEntity(config_entry)])
 
 
 class LiteLLMSTTEntity(SpeechToTextEntity):
@@ -48,8 +57,8 @@ class LiteLLMSTTEntity(SpeechToTextEntity):
     def __init__(self, config_entry: ConfigEntry) -> None:
         """Initialize LiteLLM STT entity."""
         self._config_entry = config_entry
-        self._attr_name = "LiteLLM STT"
-        self._attr_unique_id = f"{config_entry.entry_id}-stt"
+        self._attr_name = config_entry.data.get(CONF_SERVICE_NAME, "LiteLLM STT")
+        self._attr_unique_id = config_entry.entry_id
 
     @property
     def supported_languages(self) -> list[str]:
@@ -139,9 +148,10 @@ class LiteLLMSTTEntity(SpeechToTextEntity):
             return SpeechResult("", SpeechResultState.ERROR)
 
         # Create form data for the API request
+        model = self._config_entry.data.get(CONF_MODEL, "whisper-1")
         data = FormData()
         data.add_field("file", io.BytesIO(audio_data), filename="audio.wav", content_type="audio/wav")
-        data.add_field("model", "whisper-1")
+        data.add_field("model", model)
         if metadata.language:
             data.add_field("language", metadata.language)
 

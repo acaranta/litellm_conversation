@@ -16,6 +16,7 @@ Platform | Description
 `conversation` | Conversation agent powered by LiteLLM models
 `stt` | Speech-to-text service using LiteLLM
 `tts` | Text-to-speech service using LiteLLM
+`ai_task` | AI Task service for data generation and image analysis
 
 ## Features
 
@@ -23,6 +24,10 @@ Platform | Description
 - **Custom Base URL**: Configure your LiteLLM proxy endpoint 
 - **Model Selection**: Choose from a wide variety of models including OpenAI, Claude, Gemini, and more
 - **Voice Integration**: Full STT and TTS support for voice conversations
+- **AI Task Service**: Generate data and analyze images using vision models
+- **Vision Model Support**: Process camera feeds and images with models like GPT-4 Vision, Claude 3 Vision, Gemini Pro Vision
+- **File Processing**: Handle various file types including images, PDFs, and text files
+- **Structured Output**: Generate data in specific formats for automation use
 - **OpenAI Compatibility**: Drop-in replacement for OpenAI Conversation component
 - **Rich Configuration**: Temperature, max tokens, presence penalty, and more
 - **Template Support**: Customizable system prompts with Home Assistant context
@@ -100,6 +105,61 @@ The integration provides both STT and TTS services:
 1. **Speech-to-Text**: Configure in Home Assistant's STT settings
 2. **Text-to-Speech**: Configure in Home Assistant's TTS settings
 
+### AI Task Service
+
+The AI Task service allows you to generate data and analyze images using vision models:
+
+#### Image Analysis Examples
+
+```yaml
+# Count objects in a camera feed
+automation:
+  - alias: "Count chickens in coop"
+    trigger:
+      platform: time
+      at: "08:00:00"
+    action:
+      service: ai_task.generate_data
+      data:
+        instructions: "Count the number of chickens in this image"
+        attachments:
+          - entity_id: camera.chicken_coop
+      response_variable: chicken_count
+
+# Analyze security camera for activity
+automation:  
+  - alias: "Security analysis"
+    trigger:
+      platform: state
+      entity_id: binary_sensor.front_door_motion
+    action:
+      service: ai_task.generate_data
+      data:
+        instructions: "Describe what activity you see in this security camera image"
+        attachments:
+          - entity_id: camera.front_door
+```
+
+#### Structured Data Generation
+
+```yaml
+# Generate structured weather summary
+automation:
+  - alias: "Weather summary"
+    trigger:
+      platform: time
+      at: "07:00:00"
+    action:
+      service: ai_task.generate_data
+      data:
+        instructions: "Create a weather summary for today"
+        structure:
+          temperature: number
+          condition: text
+          recommendation: text
+      response_variable: weather_data
+```
+
 ### Automation Example
 
 ```yaml
@@ -119,12 +179,19 @@ automation:
 
 The integration supports any model available through your LiteLLM proxy, including:
 
-- **OpenAI**: gpt-3.5-turbo, gpt-4, gpt-4-turbo-preview, gpt-4o
+### Text Models (Conversation, STT, TTS)
+- **OpenAI**: gpt-3.5-turbo, gpt-4, gpt-4-turbo-preview, gpt-4o, gpt-4o-mini
 - **Anthropic**: claude-3-haiku, claude-3-sonnet, claude-3-opus, claude-3.5-sonnet  
 - **Google**: gemini-pro, gemini-1.5-pro
 - **Meta**: llama-2-70b-chat, llama-3-70b-chat
 - **Mistral**: mixtral-8x7b-instruct
 - **And many more...**
+
+### Vision Models (AI Task)
+- **OpenAI**: gpt-4-vision-preview, gpt-4o, gpt-4o-mini
+- **Anthropic**: claude-3-haiku, claude-3-sonnet, claude-3-opus, claude-3.5-sonnet
+- **Google**: gemini-pro-vision, gemini-1.5-pro
+- **Any vision-capable model available through your LiteLLM proxy**
 
 ## Troubleshooting
 

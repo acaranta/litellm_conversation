@@ -61,6 +61,56 @@ RECOMMENDED_MODELS = [
     "mixtral-8x7b-instruct",
 ]
 
+VISION_MODELS = [
+    "gpt-4-vision-preview",
+    "gpt-4o",
+    "gpt-4o-mini",
+    "claude-3-haiku-20240307",
+    "claude-3-sonnet-20240229",
+    "claude-3-opus-20240229",
+    "claude-3-5-sonnet-20241022",
+    "gemini-pro-vision",
+    "gemini-1.5-pro",
+]
+
 EVENT_CONVERSATION_PROCESS = f"{DOMAIN}_process"
 
 CONF_CHAT_MODEL = CONF_MODEL
+CONF_VISION_MODEL = "vision_model"
+CONF_SERVICE_TYPE = "service_type"
+CONF_SERVICE_NAME = "service_name"
+
+DEFAULT_VISION_MODEL = "gpt-4o"
+
+# Service types for multi-instance setup
+SERVICE_TYPE_CONVERSATION = "conversation"
+SERVICE_TYPE_STT = "stt"
+SERVICE_TYPE_TTS = "tts"
+SERVICE_TYPE_AI_TASK = "ai_task"
+
+SERVICE_TYPES = [
+    SERVICE_TYPE_CONVERSATION,
+    SERVICE_TYPE_STT,
+    SERVICE_TYPE_TTS,
+    SERVICE_TYPE_AI_TASK,
+]
+
+SERVICE_TYPE_NAMES = {
+    SERVICE_TYPE_CONVERSATION: "Conversation Agent",
+    SERVICE_TYPE_STT: "Speech-to-Text Service", 
+    SERVICE_TYPE_TTS: "Text-to-Speech Service",
+    SERVICE_TYPE_AI_TASK: "AI Task Service",
+}
+
+# Model categories for different services
+CONVERSATION_MODELS = RECOMMENDED_MODELS
+STT_MODELS = ["whisper-1"]
+TTS_MODELS = ["tts-1", "tts-1-hd"]
+AI_TASK_MODELS = VISION_MODELS
+
+SERVICE_MODEL_MAP = {
+    SERVICE_TYPE_CONVERSATION: CONVERSATION_MODELS,
+    SERVICE_TYPE_STT: STT_MODELS,
+    SERVICE_TYPE_TTS: TTS_MODELS,
+    SERVICE_TYPE_AI_TASK: AI_TASK_MODELS,
+}

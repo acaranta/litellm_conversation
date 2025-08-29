@@ -14,7 +14,14 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_BASE_URL, DOMAIN
+from .const import (
+    CONF_BASE_URL,
+    CONF_MODEL,
+    CONF_SERVICE_NAME,
+    CONF_SERVICE_TYPE,
+    DOMAIN,
+    SERVICE_TYPE_TTS,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,7 +32,9 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up LiteLLM TTS platform via config entry."""
-    async_add_entities([LiteLLMTTSEntity(config_entry)])
+    # Only set up if this is a TTS service entry
+    if config_entry.data.get(CONF_SERVICE_TYPE) == SERVICE_TYPE_TTS:
+        async_add_entities([LiteLLMTTSEntity(config_entry)])
 
 
 class LiteLLMTTSEntity(TextToSpeechEntity):
@@ -34,8 +43,8 @@ class LiteLLMTTSEntity(TextToSpeechEntity):
     def __init__(self, config_entry: ConfigEntry) -> None:
         """Initialize LiteLLM TTS entity."""
         self._config_entry = config_entry
-        self._attr_name = "LiteLLM TTS"
-        self._attr_unique_id = f"{config_entry.entry_id}-tts"
+        self._attr_name = config_entry.data.get(CONF_SERVICE_NAME, "LiteLLM TTS")
+        self._attr_unique_id = config_entry.entry_id
 
     @property
     def supported_languages(self) -> list[str]:
@@ -102,6 +111,7 @@ class LiteLLMTTSEntity(TextToSpeechEntity):
         """Load TTS audio file from the LiteLLM API."""
         
         voice = options.get("voice", "alloy")
+        model = self._config_entry.data.get(CONF_MODEL, "tts-1")
         
         session = async_get_clientsession(self.hass)
         base_url = self._config_entry.data[CONF_BASE_URL].rstrip("/")
@@ -112,7 +122,7 @@ class LiteLLMTTSEntity(TextToSpeechEntity):
         }
 
         data = {
-            "model": "tts-1",
+            "model": model,
             "input": message,
             "voice": voice,
             "response_format": "mp3",

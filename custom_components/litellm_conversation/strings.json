@@ -35,6 +35,7 @@
         "data": {
           "prompt": "System Prompt",
           "chat_model": "Model",
+          "vision_model": "Vision Model",
           "max_tokens": "Max Tokens",
           "top_p": "Top P",
           "temperature": "Temperature", 
@@ -44,6 +45,7 @@
         "data_description": {
           "prompt": "The system prompt template to use for conversations. You can use Home Assistant template syntax.",
           "chat_model": "The model to use for chat completions",
+          "vision_model": "The vision model to use for AI Task image analysis and file processing",
           "max_tokens": "Maximum number of tokens to generate in the completion",
           "top_p": "An alternative to sampling with temperature, called nucleus sampling",
           "temperature": "Controls randomness: Lowering results in less random completions",

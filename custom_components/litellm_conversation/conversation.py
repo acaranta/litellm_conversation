@@ -23,8 +23,11 @@ from .const import (
     CONF_CHAT_MODEL,
     CONF_FREQUENCY_PENALTY,
     CONF_MAX_TOKENS,
+    CONF_MODEL,
     CONF_PRESENCE_PENALTY,
     CONF_PROMPT,
+    CONF_SERVICE_NAME,
+    CONF_SERVICE_TYPE,
     CONF_TEMPERATURE,
     CONF_TOP_P,
     DEFAULT_MAX_TOKENS,
@@ -35,6 +38,7 @@ from .const import (
     DEFAULT_TEMPERATURE,
     DEFAULT_TOP_P,
     DOMAIN,
+    SERVICE_TYPE_CONVERSATION,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -92,8 +96,10 @@ async def async_setup_entry(
     async_add_entities: conversation.ConversationEntitySetupCallback,
 ) -> None:
     """Set up conversation entities."""
-    agent = LiteLLMConversationEntity(config_entry)
-    async_add_entities([agent])
+    # Only set up if this is a conversation service entry
+    if config_entry.data.get(CONF_SERVICE_TYPE) == SERVICE_TYPE_CONVERSATION:
+        agent = LiteLLMConversationEntity(config_entry)
+        async_add_entities([agent])
 
 
 class LiteLLMConversationEntity(conversation.ConversationEntity):
@@ -107,7 +113,7 @@ class LiteLLMConversationEntity(conversation.ConversationEntity):
     @property
     def name(self) -> str:
         """Return the name of the entity."""
-        return "LiteLLM Conversation"
+        return self.entry.data.get(CONF_SERVICE_NAME, "LiteLLM Conversation")
 
     @property
     def unique_id(self) -> str:
@@ -142,19 +148,14 @@ class LiteLLMConversationEntity(conversation.ConversationEntity):
         self, user_input: conversation.ConversationInput
     ) -> conversation.ConversationResult:
         """Process a sentence."""
-        raw_prompt = self.entry.options.get(CONF_PROMPT, DEFAULT_PROMPT)
-        model = self.entry.options.get(
-            CONF_CHAT_MODEL, self.entry.data.get(CONF_CHAT_MODEL, DEFAULT_MODEL)
-        )
-        max_tokens = self.entry.options.get(CONF_MAX_TOKENS, DEFAULT_MAX_TOKENS)
-        top_p = self.entry.options.get(CONF_TOP_P, DEFAULT_TOP_P)
-        temperature = self.entry.options.get(CONF_TEMPERATURE, DEFAULT_TEMPERATURE)
-        presence_penalty = self.entry.options.get(
-            CONF_PRESENCE_PENALTY, DEFAULT_PRESENCE_PENALTY
-        )
-        frequency_penalty = self.entry.options.get(
-            CONF_FREQUENCY_PENALTY, DEFAULT_FREQUENCY_PENALTY
-        )
+        # Read configuration from sub-entry data directly
+        raw_prompt = self.entry.data.get(CONF_PROMPT, DEFAULT_PROMPT)
+        model = self.entry.data.get(CONF_MODEL, DEFAULT_MODEL)
+        max_tokens = self.entry.data.get(CONF_MAX_TOKENS, DEFAULT_MAX_TOKENS)
+        top_p = self.entry.data.get(CONF_TOP_P, DEFAULT_TOP_P)
+        temperature = self.entry.data.get(CONF_TEMPERATURE, DEFAULT_TEMPERATURE)
+        presence_penalty = self.entry.data.get(CONF_PRESENCE_PENALTY, DEFAULT_PRESENCE_PENALTY)
+        frequency_penalty = self.entry.data.get(CONF_FREQUENCY_PENALTY, DEFAULT_FREQUENCY_PENALTY)
 
         if user_input.conversation_id in self.history:
             conversation_id = user_input.conversation_id
