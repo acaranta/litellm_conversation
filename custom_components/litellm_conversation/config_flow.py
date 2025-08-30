@@ -266,14 +266,54 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._api_key = user_input[CONF_API_KEY]
                 self._available_models = info["models"]
                 
-                # Create the main integration entry
+                # Create the main integration entry with automatic subentries
                 return self.async_create_entry(
                     title=info["title"],
                     data={
                         CONF_BASE_URL: self._base_url,
                         CONF_API_KEY: self._api_key,
                         "available_models": self._available_models,
-                    }
+                    },
+                    subentries=[
+                        {
+                            "subentry_type": SERVICE_TYPE_CONVERSATION,
+                            "data": {
+                                CONF_MODEL: self._available_models[0] if self._available_models else DEFAULT_MODEL,
+                                CONF_PROMPT: DEFAULT_CONF_PROMPT,
+                                CONF_MAX_TOKENS: DEFAULT_MAX_TOKENS,
+                                CONF_TEMPERATURE: DEFAULT_TEMPERATURE,
+                                CONF_TOP_P: DEFAULT_TOP_P,
+                                CONF_PRESENCE_PENALTY: DEFAULT_PRESENCE_PENALTY,
+                                CONF_FREQUENCY_PENALTY: DEFAULT_FREQUENCY_PENALTY,
+                            },
+                            "title": "LiteLLM Conversation Agent",
+                            "unique_id": None,
+                        },
+                        {
+                            "subentry_type": SERVICE_TYPE_STT,
+                            "data": {
+                                CONF_MODEL: next((m for m in self._available_models if "whisper" in m.lower()), "whisper-1") if self._available_models else "whisper-1",
+                            },
+                            "title": "LiteLLM Speech-to-Text",
+                            "unique_id": None,
+                        },
+                        {
+                            "subentry_type": SERVICE_TYPE_TTS,
+                            "data": {
+                                CONF_MODEL: next((m for m in self._available_models if "tts" in m.lower()), "tts-1") if self._available_models else "tts-1",
+                            },
+                            "title": "LiteLLM Text-to-Speech",
+                            "unique_id": None,
+                        },
+                        {
+                            "subentry_type": SERVICE_TYPE_AI_TASK,
+                            "data": {
+                                CONF_MODEL: self._available_models[0] if self._available_models else "gpt-4o",
+                            },
+                            "title": "LiteLLM AI Task",
+                            "unique_id": None,
+                        },
+                    ],
                 )
 
         return self.async_show_form(
@@ -345,8 +385,44 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Manage the options."""
-        # For now, just show a message that subentries should be managed via the UI
-        return self.async_create_entry(title="", data={})
+        errors: dict[str, str] = {}
+        
+        if user_input is not None:
+            try:
+                info = await validate_input(self.hass, user_input)
+            except CannotConnect:
+                errors["base"] = "cannot_connect"
+            except InvalidAuth:
+                errors["base"] = "invalid_auth"
+            except Exception:  # pylint: disable=broad-except
+                _LOGGER.exception("Unexpected exception")
+                errors["base"] = "unknown"
+            else:
+                # Update the main entry
+                self.hass.config_entries.async_update_entry(
+                    self.config_entry,
+                    data={
+                        CONF_BASE_URL: user_input[CONF_BASE_URL],
+                        CONF_API_KEY: user_input[CONF_API_KEY],
+                        "available_models": info["models"],
+                    }
+                )
+                return self.async_create_entry(title="", data={})
+        
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema({
+                vol.Required(
+                    CONF_BASE_URL,
+                    default=self.config_entry.data.get(CONF_BASE_URL, DEFAULT_BASE_URL),
+                ): str,
+                vol.Required(
+                    CONF_API_KEY,
+                    default=self.config_entry.data.get(CONF_API_KEY, ""),
+                ): str,
+            }),
+            errors=errors,
+        )
 
 
 class CannotConnect(Exception):

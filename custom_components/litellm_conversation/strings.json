@@ -30,27 +30,71 @@
   "options": {
     "step": {
       "init": {
-        "title": "LiteLLM Conversation Options",
-        "description": "Configure advanced options for your LiteLLM integration",
+        "title": "LiteLLM Configuration",
+        "description": "Configure your LiteLLM endpoint and credentials",
         "data": {
-          "prompt": "System Prompt",
-          "chat_model": "Model",
-          "vision_model": "Vision Model",
-          "max_tokens": "Max Tokens",
-          "top_p": "Top P",
-          "temperature": "Temperature", 
-          "presence_penalty": "Presence Penalty",
-          "frequency_penalty": "Frequency Penalty"
+          "base_url": "Base URL",
+          "api_key": "API Key"
         },
         "data_description": {
-          "prompt": "The system prompt template to use for conversations. You can use Home Assistant template syntax.",
-          "chat_model": "The model to use for chat completions",
-          "vision_model": "The vision model to use for AI Task image analysis and file processing",
-          "max_tokens": "Maximum number of tokens to generate in the completion",
-          "top_p": "An alternative to sampling with temperature, called nucleus sampling",
-          "temperature": "Controls randomness: Lowering results in less random completions",
-          "presence_penalty": "Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far",
-          "frequency_penalty": "Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far"
+          "base_url": "The base URL for your LiteLLM proxy endpoint",
+          "api_key": "The API key for authentication with your LiteLLM proxy"
+        }
+      }
+    }
+  },
+  "subentry": {
+    "conversation": {
+      "name": "Conversation Agent",
+      "step": {
+        "set_options": {
+          "title": "Configure Conversation Agent",
+          "description": "Set up your conversation agent options",
+          "data": {
+            "model": "Model",
+            "prompt": "System Prompt",
+            "max_tokens": "Max Tokens",
+            "temperature": "Temperature",
+            "top_p": "Top P",
+            "presence_penalty": "Presence Penalty",
+            "frequency_penalty": "Frequency Penalty"
+          }
+        }
+      }
+    },
+    "stt": {
+      "name": "Speech-to-Text",
+      "step": {
+        "set_options": {
+          "title": "Configure Speech-to-Text",
+          "description": "Set up your speech-to-text service",
+          "data": {
+            "model": "Model"
+          }
+        }
+      }
+    },
+    "tts": {
+      "name": "Text-to-Speech",
+      "step": {
+        "set_options": {
+          "title": "Configure Text-to-Speech",
+          "description": "Set up your text-to-speech service",
+          "data": {
+            "model": "Model"
+          }
+        }
+      }
+    },
+    "ai_task": {
+      "name": "AI Task",
+      "step": {
+        "set_options": {
+          "title": "Configure AI Task",
+          "description": "Set up your AI task service for image analysis",
+          "data": {
+            "model": "Model"
+          }
         }
       }
     }
