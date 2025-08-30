@@ -121,3 +121,4 @@ dmypy.json
 *.db-shm
 home-assistant.log*
 home-assistant_v2.db*
+litellm_conversation.zip
