@@ -70,26 +70,16 @@ SUPPORTED_SUBENTRY_TYPES = [
 class SubentryFlowHandler(ConfigSubentryFlow):
     """LiteLLM Conversation subentry flow handler."""
 
-    def __init__(
-        self,
-        config_entry: config_entries.ConfigEntry,
-        subentry_type: str,
-        subentry: config_entries.ConfigEntry | None = None,
-    ) -> None:
-        """Initialize LiteLLM subentry flow."""
-        _LOGGER.debug("Initializing subentry flow: type=%s, is_new=%s", subentry_type, subentry is None)
-        super().__init__(config_entry, subentry_type, subentry)
-
     @property
     def _is_new(self) -> bool:
         """Return True if this is a new subentry."""
-        return self._subentry is None
+        return self.source == "user"
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         """Handle adding a new subentry."""
-        _LOGGER.debug("Subentry user step: type=%s, input=%s", self._subentry_type, user_input is not None)
+        _LOGGER.debug("Subentry user step: input=%s", user_input is not None)
         return await self.async_step_set_options(user_input)
 
     async def async_step_reconfigure(
@@ -102,18 +92,18 @@ class SubentryFlowHandler(ConfigSubentryFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         """Handle the set options step."""
-        available_models = self._config_entry.data.get("available_models", [])
+        available_models = self.config_entry.data.get("available_models", [])
         
         # Get default model based on service type
-        if self._subentry_type == SERVICE_TYPE_STT:
+        if self.subentry_type == SERVICE_TYPE_STT:
             default_model = "whisper-1"
             if available_models:
                 default_model = next((m for m in available_models if "whisper" in m.lower()), default_model)
-        elif self._subentry_type == SERVICE_TYPE_TTS:
+        elif self.subentry_type == SERVICE_TYPE_TTS:
             default_model = "tts-1"
             if available_models:
                 default_model = next((m for m in available_models if "tts" in m.lower()), default_model)
-        elif self._subentry_type == SERVICE_TYPE_AI_TASK:
+        elif self.subentry_type == SERVICE_TYPE_AI_TASK:
             default_model = "gpt-4o"
             if available_models:
                 default_model = available_models[0]
@@ -129,7 +119,7 @@ class SubentryFlowHandler(ConfigSubentryFlow):
             }
             
             # Add service-specific fields
-            if self._subentry_type == SERVICE_TYPE_CONVERSATION:
+            if self.subentry_type == SERVICE_TYPE_CONVERSATION:
                 subentry_data.update({
                     CONF_PROMPT: user_input.get(CONF_PROMPT, DEFAULT_CONF_PROMPT),
                     CONF_MAX_TOKENS: user_input.get(CONF_MAX_TOKENS, DEFAULT_MAX_TOKENS),
@@ -141,18 +131,18 @@ class SubentryFlowHandler(ConfigSubentryFlow):
 
             if self._is_new:
                 return self.async_create_entry(
-                    title=f"LiteLLM {SERVICE_TYPE_NAMES[self._subentry_type]}",
+                    title=f"LiteLLM {SERVICE_TYPE_NAMES[self.subentry_type]}",
                     data=subentry_data,
                 )
             else:
                 return self.async_update_and_abort(
-                    self._config_entry,
-                    self._subentry,
+                    self.config_entry,
+                    self.subentry,
                     data=subentry_data,
                 )
 
         # Get existing values if reconfiguring
-        existing_data = self._subentry.data if not self._is_new else {}
+        existing_data = self.subentry.data if not self._is_new else {}
         
         # Build form schema
         schema_fields = {
@@ -163,7 +153,7 @@ class SubentryFlowHandler(ConfigSubentryFlow):
         }
         
         # Add service-specific fields
-        if self._subentry_type == SERVICE_TYPE_CONVERSATION:
+        if self.subentry_type == SERVICE_TYPE_CONVERSATION:
             schema_fields.update({
                 vol.Optional(
                     CONF_PROMPT, 

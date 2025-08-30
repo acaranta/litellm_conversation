@@ -16,6 +16,6 @@
     "aiohttp>=3.8.0"
   ],
   "ssdp": [],
-  "version": "1.0.16",
+  "version": "1.0.17",
   "zeroconf": []
 }
