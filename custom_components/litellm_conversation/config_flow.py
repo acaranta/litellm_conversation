@@ -114,6 +114,16 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
         
         if user_input is not None:
+            # Check if this is a service entry from options flow
+            if "service_type" in user_input:
+                # This is a service entry, create it directly
+                service_type = user_input["service_type"]
+                return self.async_create_entry(
+                    title=f"LiteLLM {SERVICE_TYPE_NAMES[service_type]}",
+                    data=user_input,
+                )
+            
+            # This is the main integration setup
             try:
                 info = await validate_input(self.hass, user_input)
             except CannotConnect:
@@ -293,10 +303,11 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 **subentry_data,
             }
 
-            await self.hass.config_entries.async_add(
-                domain=DOMAIN,
-                title=f"LiteLLM {SERVICE_TYPE_NAMES[service_type]}",
-                data=entry_data,
+            # Create a new config entry directly using the flow manager
+            await self.hass.config_entries.flow.async_init(
+                DOMAIN,
+                context={"source": "user"},  
+                data=entry_data
             )
             
             return self.async_create_entry(
