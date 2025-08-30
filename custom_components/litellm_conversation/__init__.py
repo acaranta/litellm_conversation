@@ -22,12 +22,18 @@ PLATFORMS = (
 )
 
 
+import logging
+
+_LOGGER = logging.getLogger(__name__)
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up LiteLLM Conversation from a config entry."""
+    _LOGGER.debug("Setting up LiteLLM entry %s with %d subentries", entry.entry_id, len(entry.subentries))
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = entry.data
 
-    # Forward to all platforms - they will handle subentry filtering
+    # Forward to all platforms - they will handle subentry filtering  
+    _LOGGER.debug("Forwarding to platforms: %s", PLATFORMS)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     
     return True

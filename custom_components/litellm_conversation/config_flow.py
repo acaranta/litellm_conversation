@@ -77,12 +77,26 @@ class SubentryFlowHandler(ConfigSubentryFlow):
         subentry: config_entries.ConfigEntry | None = None,
     ) -> None:
         """Initialize LiteLLM subentry flow."""
+        _LOGGER.debug("Initializing subentry flow: type=%s, is_new=%s", subentry_type, subentry is None)
         super().__init__(config_entry, subentry_type, subentry)
 
     @property
     def _is_new(self) -> bool:
         """Return True if this is a new subentry."""
         return self._subentry is None
+
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """Handle adding a new subentry."""
+        _LOGGER.debug("Subentry user step: type=%s, input=%s", self._subentry_type, user_input is not None)
+        return await self.async_step_set_options(user_input)
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """Handle reconfiguring an existing subentry."""
+        return await self.async_step_set_options(user_input)
 
     async def async_step_set_options(
         self, user_input: dict[str, Any] | None = None
@@ -228,12 +242,15 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
         cls, config_entry: config_entries.ConfigEntry
     ) -> dict[str, type[ConfigSubentryFlow]]:
         """Return the supported subentry types."""
-        return {
+        _LOGGER.debug("Registering subentry types for entry %s", config_entry.entry_id)
+        subentry_types = {
             SERVICE_TYPE_CONVERSATION: SubentryFlowHandler,
             SERVICE_TYPE_STT: SubentryFlowHandler,
             SERVICE_TYPE_TTS: SubentryFlowHandler,
             SERVICE_TYPE_AI_TASK: SubentryFlowHandler,
         }
+        _LOGGER.debug("Supported subentry types: %s", list(subentry_types.keys()))
+        return subentry_types
     
     @staticmethod
     def async_get_options_flow(
@@ -265,6 +282,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
                 self._available_models = info["models"]
                 
                 # Create the main integration entry with automatic subentries
+                _LOGGER.debug("Creating main entry with %d subentries", 4)
                 return self.async_create_entry(
                     title=info["title"],
                     data={

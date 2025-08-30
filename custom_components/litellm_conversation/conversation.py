@@ -96,15 +96,24 @@ async def async_setup_entry(
     async_add_entities: conversation.ConversationEntitySetupCallback,
 ) -> None:
     """Set up conversation entities."""
+    _LOGGER.debug("Setting up conversation entities for entry %s", config_entry.entry_id)
+    _LOGGER.debug("Found %d subentries", len(config_entry.subentries))
+    
     # Set up conversation agents from subentries
+    conversation_count = 0
     for subentry in config_entry.subentries.values():
+        _LOGGER.debug("Processing subentry %s of type %s", subentry.subentry_id, subentry.subentry_type)
         if subentry.subentry_type != SERVICE_TYPE_CONVERSATION:
             continue
 
+        conversation_count += 1
+        _LOGGER.debug("Adding conversation entity %d", conversation_count)
         async_add_entities(
             [LiteLLMConversationEntity(config_entry, subentry)],
             config_subentry_id=subentry.subentry_id,
         )
+    
+    _LOGGER.debug("Added %d conversation entities", conversation_count)
 
 
 class LiteLLMConversationEntity(conversation.ConversationEntity):
