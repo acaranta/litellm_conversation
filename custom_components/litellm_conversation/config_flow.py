@@ -62,6 +62,122 @@ SUPPORTED_SUBENTRY_TYPES = [
 ]
 
 
+class SubentryFlowHandler(ConfigSubentryFlow):
+    """LiteLLM Conversation subentry flow handler."""
+
+    def __init__(
+        self,
+        config_entry: config_entries.ConfigEntry,
+        subentry_type: str,
+        subentry: config_entries.ConfigEntry | None = None,
+    ) -> None:
+        """Initialize LiteLLM subentry flow."""
+        super().__init__(config_entry, subentry_type, subentry)
+
+    @property
+    def _is_new(self) -> bool:
+        """Return True if this is a new subentry."""
+        return self._subentry is None
+
+    async def async_step_set_options(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle the set options step."""
+        available_models = self._config_entry.data.get("available_models", [])
+        
+        # Get default model based on service type
+        if self._subentry_type == SERVICE_TYPE_STT:
+            default_model = "whisper-1"
+            if available_models:
+                default_model = next((m for m in available_models if "whisper" in m.lower()), default_model)
+        elif self._subentry_type == SERVICE_TYPE_TTS:
+            default_model = "tts-1"
+            if available_models:
+                default_model = next((m for m in available_models if "tts" in m.lower()), default_model)
+        elif self._subentry_type == SERVICE_TYPE_AI_TASK:
+            default_model = "gpt-4o"
+            if available_models:
+                default_model = available_models[0]
+        else:  # conversation
+            default_model = DEFAULT_MODEL
+            if available_models:
+                default_model = available_models[0]
+
+        if user_input is not None:
+            # Create/update subentry data
+            subentry_data = {
+                CONF_MODEL: user_input[CONF_MODEL],
+            }
+            
+            # Add service-specific fields
+            if self._subentry_type == SERVICE_TYPE_CONVERSATION:
+                subentry_data.update({
+                    CONF_PROMPT: user_input.get(CONF_PROMPT, DEFAULT_CONF_PROMPT),
+                    CONF_MAX_TOKENS: user_input.get(CONF_MAX_TOKENS, DEFAULT_MAX_TOKENS),
+                    CONF_TEMPERATURE: user_input.get(CONF_TEMPERATURE, DEFAULT_TEMPERATURE),
+                    CONF_TOP_P: user_input.get(CONF_TOP_P, DEFAULT_TOP_P),
+                    CONF_PRESENCE_PENALTY: user_input.get(CONF_PRESENCE_PENALTY, DEFAULT_PRESENCE_PENALTY),
+                    CONF_FREQUENCY_PENALTY: user_input.get(CONF_FREQUENCY_PENALTY, DEFAULT_FREQUENCY_PENALTY),
+                })
+
+            if self._is_new:
+                return self.async_create_entry(
+                    title=f"LiteLLM {SERVICE_TYPE_NAMES[self._subentry_type]}",
+                    data=subentry_data,
+                )
+            else:
+                return self.async_update_and_abort(
+                    self._config_entry,
+                    self._subentry,
+                    data=subentry_data,
+                )
+
+        # Get existing values if reconfiguring
+        existing_data = self._subentry.data if not self._is_new else {}
+        
+        # Build form schema
+        schema_fields = {
+            vol.Required(
+                CONF_MODEL, 
+                default=existing_data.get(CONF_MODEL, default_model)
+            ): TextSelector(),
+        }
+        
+        # Add service-specific fields
+        if self._subentry_type == SERVICE_TYPE_CONVERSATION:
+            schema_fields.update({
+                vol.Optional(
+                    CONF_PROMPT, 
+                    default=existing_data.get(CONF_PROMPT, DEFAULT_CONF_PROMPT)
+                ): TextSelector(TextSelectorConfig(multiline=True)),
+                vol.Optional(
+                    CONF_MAX_TOKENS, 
+                    default=existing_data.get(CONF_MAX_TOKENS, DEFAULT_MAX_TOKENS)
+                ): NumberSelector(NumberSelectorConfig(min=1, max=4096, mode=NumberSelectorMode.BOX)),
+                vol.Optional(
+                    CONF_TEMPERATURE, 
+                    default=existing_data.get(CONF_TEMPERATURE, DEFAULT_TEMPERATURE)
+                ): NumberSelector(NumberSelectorConfig(min=0.0, max=2.0, step=0.1, mode=NumberSelectorMode.BOX)),
+                vol.Optional(
+                    CONF_TOP_P, 
+                    default=existing_data.get(CONF_TOP_P, DEFAULT_TOP_P)
+                ): NumberSelector(NumberSelectorConfig(min=0.0, max=1.0, step=0.1, mode=NumberSelectorMode.BOX)),
+                vol.Optional(
+                    CONF_PRESENCE_PENALTY, 
+                    default=existing_data.get(CONF_PRESENCE_PENALTY, DEFAULT_PRESENCE_PENALTY)
+                ): NumberSelector(NumberSelectorConfig(min=-2.0, max=2.0, step=0.1, mode=NumberSelectorMode.BOX)),
+                vol.Optional(
+                    CONF_FREQUENCY_PENALTY, 
+                    default=existing_data.get(CONF_FREQUENCY_PENALTY, DEFAULT_FREQUENCY_PENALTY)
+                ): NumberSelector(NumberSelectorConfig(min=-2.0, max=2.0, step=0.1, mode=NumberSelectorMode.BOX)),
+            })
+
+        return self.async_show_form(
+            step_id="set_options",
+            data_schema=vol.Schema(schema_fields),
+        )
+
+
 async def validate_input(hass: core.HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
     session = async_get_clientsession(hass)
@@ -103,9 +219,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     @staticmethod 
     @callback
-    def async_get_supported_subentry_types(entry: config_entries.ConfigEntry) -> set[str]:
+    def async_get_supported_subentry_types(entry: config_entries.ConfigEntry) -> dict[str, type]:
         """Return the supported subentry types."""
-        return {SERVICE_TYPE_CONVERSATION, SERVICE_TYPE_STT, SERVICE_TYPE_TTS, SERVICE_TYPE_AI_TASK}
+        return {
+            SERVICE_TYPE_CONVERSATION: SubentryFlowHandler,
+            SERVICE_TYPE_STT: SubentryFlowHandler,
+            SERVICE_TYPE_TTS: SubentryFlowHandler,
+            SERVICE_TYPE_AI_TASK: SubentryFlowHandler,
+        }
     
     @staticmethod
     def async_get_options_flow(
@@ -226,123 +347,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         """Manage the options."""
         # For now, just show a message that subentries should be managed via the UI
         return self.async_create_entry(title="", data={})
-
-
-class SubentryFlowHandler(ConfigSubentryFlow):
-    """LiteLLM Conversation subentry flow handler."""
-
-    def __init__(
-        self,
-        config_entry: config_entries.ConfigEntry,
-        subentry_type: str,
-        subentry: config_entries.ConfigEntry | None = None,
-    ) -> None:
-        """Initialize LiteLLM subentry flow."""
-        super().__init__(config_entry, subentry_type, subentry)
-
-    @property
-    def _is_new(self) -> bool:
-        """Return True if this is a new subentry."""
-        return self._subentry is None
-
-    async def async_step_set_options(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Handle the set options step."""
-        available_models = self._config_entry.data.get("available_models", [])
-        
-        # Get default model based on service type
-        if self._subentry_type == SERVICE_TYPE_STT:
-            default_model = "whisper-1"
-            if available_models:
-                default_model = next((m for m in available_models if "whisper" in m.lower()), default_model)
-        elif self._subentry_type == SERVICE_TYPE_TTS:
-            default_model = "tts-1"
-            if available_models:
-                default_model = next((m for m in available_models if "tts" in m.lower()), default_model)
-        elif self._subentry_type == SERVICE_TYPE_AI_TASK:
-            default_model = "gpt-4o"
-            if available_models:
-                default_model = available_models[0]
-        else:  # conversation
-            default_model = DEFAULT_MODEL
-            if available_models:
-                default_model = available_models[0]
-
-        if user_input is not None:
-            # Create/update subentry data
-            subentry_data = {
-                CONF_MODEL: user_input[CONF_MODEL],
-            }
-            
-            # Add service-specific fields
-            if self._subentry_type == SERVICE_TYPE_CONVERSATION:
-                subentry_data.update({
-                    CONF_PROMPT: user_input.get(CONF_PROMPT, DEFAULT_CONF_PROMPT),
-                    CONF_MAX_TOKENS: user_input.get(CONF_MAX_TOKENS, DEFAULT_MAX_TOKENS),
-                    CONF_TEMPERATURE: user_input.get(CONF_TEMPERATURE, DEFAULT_TEMPERATURE),
-                    CONF_TOP_P: user_input.get(CONF_TOP_P, DEFAULT_TOP_P),
-                    CONF_PRESENCE_PENALTY: user_input.get(CONF_PRESENCE_PENALTY, DEFAULT_PRESENCE_PENALTY),
-                    CONF_FREQUENCY_PENALTY: user_input.get(CONF_FREQUENCY_PENALTY, DEFAULT_FREQUENCY_PENALTY),
-                })
-
-            if self._is_new:
-                return self.async_create_entry(
-                    title=f"LiteLLM {SERVICE_TYPE_NAMES[self._subentry_type]}",
-                    data=subentry_data,
-                )
-            else:
-                return self.async_update_and_abort(
-                    self._config_entry,
-                    self._subentry,
-                    data=subentry_data,
-                )
-
-        # Get existing values if reconfiguring
-        existing_data = self._subentry.data if not self._is_new else {}
-        
-        # Build form schema
-        schema_fields = {
-            vol.Required(
-                CONF_MODEL, 
-                default=existing_data.get(CONF_MODEL, default_model)
-            ): TextSelector(),
-        }
-        
-        # Add service-specific fields
-        if self._subentry_type == SERVICE_TYPE_CONVERSATION:
-            schema_fields.update({
-                vol.Optional(
-                    CONF_PROMPT, 
-                    default=existing_data.get(CONF_PROMPT, DEFAULT_CONF_PROMPT)
-                ): TextSelector(TextSelectorConfig(multiline=True)),
-                vol.Optional(
-                    CONF_MAX_TOKENS, 
-                    default=existing_data.get(CONF_MAX_TOKENS, DEFAULT_MAX_TOKENS)
-                ): NumberSelector(NumberSelectorConfig(min=1, max=4096, mode=NumberSelectorMode.BOX)),
-                vol.Optional(
-                    CONF_TEMPERATURE, 
-                    default=existing_data.get(CONF_TEMPERATURE, DEFAULT_TEMPERATURE)
-                ): NumberSelector(NumberSelectorConfig(min=0.0, max=2.0, step=0.1, mode=NumberSelectorMode.BOX)),
-                vol.Optional(
-                    CONF_TOP_P, 
-                    default=existing_data.get(CONF_TOP_P, DEFAULT_TOP_P)
-                ): NumberSelector(NumberSelectorConfig(min=0.0, max=1.0, step=0.1, mode=NumberSelectorMode.BOX)),
-                vol.Optional(
-                    CONF_PRESENCE_PENALTY, 
-                    default=existing_data.get(CONF_PRESENCE_PENALTY, DEFAULT_PRESENCE_PENALTY)
-                ): NumberSelector(NumberSelectorConfig(min=-2.0, max=2.0, step=0.1, mode=NumberSelectorMode.BOX)),
-                vol.Optional(
-                    CONF_FREQUENCY_PENALTY, 
-                    default=existing_data.get(CONF_FREQUENCY_PENALTY, DEFAULT_FREQUENCY_PENALTY)
-                ): NumberSelector(NumberSelectorConfig(min=-2.0, max=2.0, step=0.1, mode=NumberSelectorMode.BOX)),
-            })
-
-        return self.async_show_form(
-            step_id="set_options",
-            data_schema=vol.Schema(schema_fields),
-        )
-
 
 
 class CannotConnect(Exception):
