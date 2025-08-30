@@ -170,7 +170,7 @@ class SubentryFlowHandler(ConfigSubentryFlow):
                 vol.Optional(
                     CONF_MAX_TOKENS, 
                     default=existing_data.get(CONF_MAX_TOKENS, DEFAULT_MAX_TOKENS)
-                ): NumberSelector(NumberSelectorConfig(min=1, max=4096, mode=NumberSelectorMode.BOX)),
+                ): NumberSelector(NumberSelectorConfig(min=1, max=4096, mode=NumberSelectorMode.BOX, step=1)),
                 vol.Optional(
                     CONF_TEMPERATURE, 
                     default=existing_data.get(CONF_TEMPERATURE, DEFAULT_TEMPERATURE)

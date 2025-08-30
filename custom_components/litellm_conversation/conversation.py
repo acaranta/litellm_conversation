@@ -210,11 +210,11 @@ class LiteLLMConversationEntity(conversation.ConversationEntity):
         data = {
             "model": model,
             "messages": messages,
-            "max_tokens": max_tokens,
-            "top_p": top_p,
-            "temperature": temperature,
-            "presence_penalty": presence_penalty,
-            "frequency_penalty": frequency_penalty,
+            "max_tokens": int(max_tokens),
+            "top_p": float(top_p),
+            "temperature": float(temperature),
+            "presence_penalty": float(presence_penalty),
+            "frequency_penalty": float(frequency_penalty),
             "user": conversation_id,
         }
 
