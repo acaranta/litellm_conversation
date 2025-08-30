@@ -7,6 +7,12 @@
 [![hacs][hacsbadge]][hacs]
 [![Project Maintenance][maintenance-shield]][user_profile]
 
+## Foreword
+This Integration :
+- is it very early stages and does not currently works
+- is VERY inspired byt [openai_conversation](https://github.com/home-assistant/core/tree/dev/homeassistant/components/openai_conversation) and [Google Generative AI](https://github.com/home-assistant/core/tree/dev/homeassistant/components/google_generative_ai_conversation) Core integrations
+- is coded by a human partly (me) who is not skilled enough  and therefore uses Claude Code (AI) to try to make this integration exist. I am not denying in any way I am using AI, and I wish to make it clear here ^^
+  
 _Integration to integrate with [LiteLLM](https://github.com/BerriAI/litellm)._
 
 **This integration will set up the following platforms.**
@@ -17,7 +23,6 @@ Platform | Description
 `stt` | Speech-to-text service using LiteLLM
 `tts` | Text-to-speech service using LiteLLM
 `ai_task` | AI Task service for data generation and image analysis
-
 ## Features
 
 - **Flexible AI Model Support**: Works with 100+ LLM providers through LiteLLM proxy
