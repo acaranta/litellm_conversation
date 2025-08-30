@@ -284,12 +284,19 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     CONF_FREQUENCY_PENALTY: user_input.get(CONF_FREQUENCY_PENALTY, DEFAULT_FREQUENCY_PENALTY),
                 })
 
-            # Create the subentry
-            await self.hass.config_entries.async_add_subentry(
-                subentry_type=service_type,
+            # Create a new config entry for the service directly
+            entry_data = {
+                "service_type": service_type,
+                CONF_BASE_URL: self.config_entry.data[CONF_BASE_URL],
+                CONF_API_KEY: self.config_entry.data[CONF_API_KEY],
+                "parent_entry_id": self.config_entry.entry_id,
+                **subentry_data,
+            }
+
+            await self.hass.config_entries.async_add(
+                domain=DOMAIN,
                 title=f"LiteLLM {SERVICE_TYPE_NAMES[service_type]}",
-                data=subentry_data,
-                parent_entry_id=self.config_entry.entry_id,
+                data=entry_data,
             )
             
             return self.async_create_entry(

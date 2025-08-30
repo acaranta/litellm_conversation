@@ -32,26 +32,19 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up LiteLLM TTS platform via config entry."""
-    # Set up TTS entities from subentries
-    for subentry in config_entry.subentries.values():
-        if subentry.subentry_type != SERVICE_TYPE_TTS:
-            continue
-
-        async_add_entities(
-            [LiteLLMTTSEntity(config_entry, subentry)],
-            config_subentry_id=subentry.subentry_id,
-        )
+    # Only set up if this is a TTS service entry
+    if config_entry.data.get("service_type") == SERVICE_TYPE_TTS:
+        async_add_entities([LiteLLMTTSEntity(config_entry)])
 
 
 class LiteLLMTTSEntity(TextToSpeechEntity):
     """LiteLLM text-to-speech entity."""
 
-    def __init__(self, config_entry: ConfigEntry, subentry: ConfigEntry) -> None:
+    def __init__(self, config_entry: ConfigEntry) -> None:
         """Initialize LiteLLM TTS entity."""
         self._config_entry = config_entry
-        self._subentry = subentry
-        self._attr_name = subentry.title
-        self._attr_unique_id = f"{config_entry.entry_id}_{subentry.subentry_id}"
+        self._attr_name = config_entry.title
+        self._attr_unique_id = config_entry.entry_id
 
     @property
     def supported_languages(self) -> list[str]:
@@ -118,7 +111,7 @@ class LiteLLMTTSEntity(TextToSpeechEntity):
         """Load TTS audio file from the LiteLLM API."""
         
         voice = options.get("voice", "alloy")
-        model = self._subentry.data.get(CONF_MODEL, "tts-1")
+        model = self._config_entry.data.get(CONF_MODEL, "tts-1")
         
         session = async_get_clientsession(self.hass)
         base_url = self._config_entry.data[CONF_BASE_URL].rstrip("/")
