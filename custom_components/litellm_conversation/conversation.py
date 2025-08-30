@@ -96,29 +96,35 @@ async def async_setup_entry(
     async_add_entities: conversation.ConversationEntitySetupCallback,
 ) -> None:
     """Set up conversation entities."""
-    # Only set up if this is a conversation service entry
-    if config_entry.data.get("service_type") == SERVICE_TYPE_CONVERSATION:
-        agent = LiteLLMConversationEntity(config_entry)
-        async_add_entities([agent])
+    # Set up conversation agents from subentries
+    for subentry in config_entry.subentries.values():
+        if subentry.subentry_type != SERVICE_TYPE_CONVERSATION:
+            continue
+
+        async_add_entities(
+            [LiteLLMConversationEntity(config_entry, subentry)],
+            config_subentry_id=subentry.subentry_id,
+        )
 
 
 class LiteLLMConversationEntity(conversation.ConversationEntity):
     """LiteLLM conversation agent."""
 
-    def __init__(self, entry: ConfigEntry) -> None:
+    def __init__(self, entry: ConfigEntry, subentry: ConfigEntry) -> None:
         """Initialize the agent."""
         self.entry = entry
+        self.subentry = subentry
         self.history: dict[str, list[dict]] = {}
 
     @property
     def name(self) -> str:
         """Return the name of the entity."""
-        return self.entry.title
+        return self.subentry.title
 
     @property
     def unique_id(self) -> str:
         """Return a unique ID to use for this entity."""
-        return self.entry.entry_id
+        return f"{self.entry.entry_id}_{self.subentry.subentry_id}"
 
     @property
     def supported_languages(self) -> list[str] | Literal["*"]:
@@ -148,16 +154,16 @@ class LiteLLMConversationEntity(conversation.ConversationEntity):
         self, user_input: conversation.ConversationInput
     ) -> conversation.ConversationResult:
         """Process a sentence."""
-        # Read configuration from entry data
-        raw_prompt = self.entry.data.get(CONF_PROMPT, DEFAULT_PROMPT)
-        model = self.entry.data.get(CONF_MODEL, DEFAULT_MODEL)
-        max_tokens = self.entry.data.get(CONF_MAX_TOKENS, DEFAULT_MAX_TOKENS)
-        top_p = self.entry.data.get(CONF_TOP_P, DEFAULT_TOP_P)
-        temperature = self.entry.data.get(CONF_TEMPERATURE, DEFAULT_TEMPERATURE)
-        presence_penalty = self.entry.data.get(CONF_PRESENCE_PENALTY, DEFAULT_PRESENCE_PENALTY)
-        frequency_penalty = self.entry.data.get(CONF_FREQUENCY_PENALTY, DEFAULT_FREQUENCY_PENALTY)
+        # Read configuration from sub-entry data
+        raw_prompt = self.subentry.data.get(CONF_PROMPT, DEFAULT_PROMPT)
+        model = self.subentry.data.get(CONF_MODEL, DEFAULT_MODEL)
+        max_tokens = self.subentry.data.get(CONF_MAX_TOKENS, DEFAULT_MAX_TOKENS)
+        top_p = self.subentry.data.get(CONF_TOP_P, DEFAULT_TOP_P)
+        temperature = self.subentry.data.get(CONF_TEMPERATURE, DEFAULT_TEMPERATURE)
+        presence_penalty = self.subentry.data.get(CONF_PRESENCE_PENALTY, DEFAULT_PRESENCE_PENALTY)
+        frequency_penalty = self.subentry.data.get(CONF_FREQUENCY_PENALTY, DEFAULT_FREQUENCY_PENALTY)
         
-        # Get connection data from entry
+        # Get connection data from parent entry
         base_url = self.entry.data[CONF_BASE_URL]
         api_key = self.entry.data[CONF_API_KEY]
 

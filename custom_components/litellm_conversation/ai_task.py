@@ -43,19 +43,26 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up LiteLLM AI Task platform via config entry."""
-    # Only set up if this is an AI Task service entry
-    if config_entry.data.get("service_type") == SERVICE_TYPE_AI_TASK:
-        async_add_entities([LiteLLMAITaskEntity(config_entry)])
+    # Set up AI Task entities from subentries
+    for subentry in config_entry.subentries.values():
+        if subentry.subentry_type != SERVICE_TYPE_AI_TASK:
+            continue
+
+        async_add_entities(
+            [LiteLLMAITaskEntity(config_entry, subentry)],
+            config_subentry_id=subentry.subentry_id,
+        )
 
 
 class LiteLLMAITaskEntity(AITaskEntity):
     """LiteLLM AI Task entity."""
 
-    def __init__(self, config_entry: ConfigEntry) -> None:
+    def __init__(self, config_entry: ConfigEntry, subentry: ConfigEntry) -> None:
         """Initialize LiteLLM AI Task entity."""
         self._config_entry = config_entry
-        self._attr_name = config_entry.title
-        self._attr_unique_id = config_entry.entry_id
+        self._subentry = subentry
+        self._attr_name = subentry.title
+        self._attr_unique_id = f"{config_entry.entry_id}_{subentry.subentry_id}"
 
     @property
     def supported_features(self) -> AITaskEntityFeature:
@@ -68,7 +75,7 @@ class LiteLLMAITaskEntity(AITaskEntity):
         """Generate data based on the task instructions."""
         
         # Get the model from the service configuration
-        vision_model = self._config_entry.data.get(CONF_MODEL, DEFAULT_VISION_MODEL)
+        vision_model = self._subentry.data.get(CONF_MODEL, DEFAULT_VISION_MODEL)
         
         # Prepare messages for the API call
         messages = [

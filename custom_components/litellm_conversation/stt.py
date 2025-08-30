@@ -46,19 +46,26 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up LiteLLM STT platform via config entry."""
-    # Only set up if this is an STT service entry
-    if config_entry.data.get("service_type") == SERVICE_TYPE_STT:
-        async_add_entities([LiteLLMSTTEntity(config_entry)])
+    # Set up STT entities from subentries
+    for subentry in config_entry.subentries.values():
+        if subentry.subentry_type != SERVICE_TYPE_STT:
+            continue
+
+        async_add_entities(
+            [LiteLLMSTTEntity(config_entry, subentry)],
+            config_subentry_id=subentry.subentry_id,
+        )
 
 
 class LiteLLMSTTEntity(SpeechToTextEntity):
     """LiteLLM speech-to-text entity."""
 
-    def __init__(self, config_entry: ConfigEntry) -> None:
+    def __init__(self, config_entry: ConfigEntry, subentry: ConfigEntry) -> None:
         """Initialize LiteLLM STT entity."""
         self._config_entry = config_entry
-        self._attr_name = config_entry.title
-        self._attr_unique_id = config_entry.entry_id
+        self._subentry = subentry
+        self._attr_name = subentry.title
+        self._attr_unique_id = f"{config_entry.entry_id}_{subentry.subentry_id}"
 
     @property
     def supported_languages(self) -> list[str]:
@@ -148,7 +155,7 @@ class LiteLLMSTTEntity(SpeechToTextEntity):
             return SpeechResult("", SpeechResultState.ERROR)
 
         # Create form data for the API request
-        model = self._config_entry.data.get(CONF_MODEL, "whisper-1")
+        model = self._subentry.data.get(CONF_MODEL, "whisper-1")
         data = FormData()
         data.add_field("file", io.BytesIO(audio_data), filename="audio.wav", content_type="audio/wav")
         data.add_field("model", model)
