@@ -5,7 +5,8 @@
     "@acaranta"
   ],
   "config_flow": true,
-  "dependencies": [],
+  "dependencies": ["conversation"],
+  "after_dependencies": ["assist_pipeline"],
   "documentation": "https://github.com/acaranta/litellm_conversation",
   "homekit": {},
   "integration_type": "service",
@@ -15,6 +16,6 @@
     "aiohttp>=3.8.0"
   ],
   "ssdp": [],
-  "version": "1.0.14",
+  "version": "1.0.15",
   "zeroconf": []
 }

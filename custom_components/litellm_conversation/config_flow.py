@@ -9,10 +9,15 @@ import async_timeout
 import voluptuous as vol
 
 from homeassistant import config_entries, core
-from homeassistant.config_entries import ConfigSubentryFlow
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    ConfigSubentryFlow,
+    SubentryFlowResult,
+)
 from homeassistant.const import CONF_API_KEY
 from homeassistant.core import callback
-from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.selector import (
@@ -81,7 +86,7 @@ class SubentryFlowHandler(ConfigSubentryFlow):
 
     async def async_step_set_options(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> SubentryFlowResult:
         """Handle the set options step."""
         available_models = self._config_entry.data.get("available_models", [])
         
@@ -206,7 +211,7 @@ async def validate_input(hass: core.HomeAssistant, data: dict[str, Any]) -> dict
         raise CannotConnect
 
 
-class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class ConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for LiteLLM Conversation."""
 
     VERSION = 1
@@ -239,7 +244,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Handle the initial step."""
         errors: dict[str, str] = {}
         
@@ -322,7 +327,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Handle reconfiguration of the integration."""
         config_entry = self._get_reconfigure_entry()
         errors: dict[str, str] = {}
@@ -376,7 +381,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Manage the options."""
         errors: dict[str, str] = {}
         
