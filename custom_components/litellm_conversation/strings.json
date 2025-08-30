@@ -43,9 +43,13 @@
       }
     }
   },
-  "subentry": {
+  "config_subentries": {
     "conversation": {
-      "name": "Conversation Agent",
+      "initiate_flow": {
+        "user": "Add conversation agent",
+        "reconfigure": "Reconfigure conversation agent"
+      },
+      "entry_type": "Conversation agent",
       "step": {
         "set_options": {
           "title": "Configure Conversation Agent",
@@ -58,42 +62,72 @@
             "top_p": "Top P",
             "presence_penalty": "Presence Penalty",
             "frequency_penalty": "Frequency Penalty"
+          },
+          "data_description": {
+            "model": "The model to use for chat completions",
+            "prompt": "The system prompt template to use for conversations",
+            "max_tokens": "Maximum number of tokens to generate",
+            "temperature": "Controls randomness: Lower values are more deterministic",
+            "top_p": "Alternative to sampling with temperature",
+            "presence_penalty": "Penalize new tokens based on their presence in the text",
+            "frequency_penalty": "Penalize new tokens based on their frequency in the text"
           }
         }
       }
     },
     "stt": {
-      "name": "Speech-to-Text",
+      "initiate_flow": {
+        "user": "Add speech-to-text service",
+        "reconfigure": "Reconfigure speech-to-text service"
+      },
+      "entry_type": "Speech-to-text service",
       "step": {
         "set_options": {
           "title": "Configure Speech-to-Text",
           "description": "Set up your speech-to-text service",
           "data": {
             "model": "Model"
+          },
+          "data_description": {
+            "model": "The speech-to-text model to use"
           }
         }
       }
     },
     "tts": {
-      "name": "Text-to-Speech",
+      "initiate_flow": {
+        "user": "Add text-to-speech service",
+        "reconfigure": "Reconfigure text-to-speech service"
+      },
+      "entry_type": "Text-to-speech service", 
       "step": {
         "set_options": {
           "title": "Configure Text-to-Speech",
           "description": "Set up your text-to-speech service",
           "data": {
             "model": "Model"
+          },
+          "data_description": {
+            "model": "The text-to-speech model to use"
           }
         }
       }
     },
     "ai_task": {
-      "name": "AI Task",
+      "initiate_flow": {
+        "user": "Add AI task service",
+        "reconfigure": "Reconfigure AI task service"
+      },
+      "entry_type": "AI task service",
       "step": {
         "set_options": {
           "title": "Configure AI Task",
           "description": "Set up your AI task service for image analysis",
           "data": {
             "model": "Model"
+          },
+          "data_description": {
+            "model": "The vision model to use for AI tasks"
           }
         }
       }

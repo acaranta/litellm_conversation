@@ -217,9 +217,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._api_key: str | None = None
         self._available_models: list[str] = []
 
-    @staticmethod 
+    @classmethod
     @callback
-    def async_get_supported_subentry_types(entry: config_entries.ConfigEntry) -> dict[str, type]:
+    def async_get_supported_subentry_types(
+        cls, config_entry: config_entries.ConfigEntry
+    ) -> dict[str, type[ConfigSubentryFlow]]:
         """Return the supported subentry types."""
         return {
             SERVICE_TYPE_CONVERSATION: SubentryFlowHandler,
@@ -234,15 +236,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> OptionsFlowHandler:
         """Create the options flow."""
         return OptionsFlowHandler(config_entry)
-
-    @staticmethod
-    def async_get_subentry_flow(
-        config_entry: config_entries.ConfigEntry,
-        subentry_type: str,
-        subentry: config_entries.ConfigEntry | None = None,
-    ) -> SubentryFlowHandler:
-        """Get the subentry flow handler."""
-        return SubentryFlowHandler(config_entry, subentry_type, subentry)
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
