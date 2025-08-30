@@ -92,18 +92,18 @@ class SubentryFlowHandler(ConfigSubentryFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         """Handle the set options step."""
-        available_models = self.config_entry.data.get("available_models", [])
+        available_models = self._get_entry().data.get("available_models", [])
         
         # Get default model based on service type
-        if self.subentry_type == SERVICE_TYPE_STT:
+        if self._subentry_type == SERVICE_TYPE_STT:
             default_model = "whisper-1"
             if available_models:
                 default_model = next((m for m in available_models if "whisper" in m.lower()), default_model)
-        elif self.subentry_type == SERVICE_TYPE_TTS:
+        elif self._subentry_type == SERVICE_TYPE_TTS:
             default_model = "tts-1"
             if available_models:
                 default_model = next((m for m in available_models if "tts" in m.lower()), default_model)
-        elif self.subentry_type == SERVICE_TYPE_AI_TASK:
+        elif self._subentry_type == SERVICE_TYPE_AI_TASK:
             default_model = "gpt-4o"
             if available_models:
                 default_model = available_models[0]
@@ -119,7 +119,7 @@ class SubentryFlowHandler(ConfigSubentryFlow):
             }
             
             # Add service-specific fields
-            if self.subentry_type == SERVICE_TYPE_CONVERSATION:
+            if self._subentry_type == SERVICE_TYPE_CONVERSATION:
                 subentry_data.update({
                     CONF_PROMPT: user_input.get(CONF_PROMPT, DEFAULT_CONF_PROMPT),
                     CONF_MAX_TOKENS: user_input.get(CONF_MAX_TOKENS, DEFAULT_MAX_TOKENS),
@@ -131,18 +131,18 @@ class SubentryFlowHandler(ConfigSubentryFlow):
 
             if self._is_new:
                 return self.async_create_entry(
-                    title=f"LiteLLM {SERVICE_TYPE_NAMES[self.subentry_type]}",
+                    title=f"LiteLLM {SERVICE_TYPE_NAMES[self._subentry_type]}",
                     data=subentry_data,
                 )
             else:
                 return self.async_update_and_abort(
-                    self.config_entry,
-                    self.subentry,
+                    self._get_entry(),
+                    self._get_reconfigure_subentry(),
                     data=subentry_data,
                 )
 
         # Get existing values if reconfiguring
-        existing_data = self.subentry.data if not self._is_new else {}
+        existing_data = self._get_reconfigure_subentry().data if not self._is_new else {}
         
         # Build form schema
         schema_fields = {
@@ -153,7 +153,7 @@ class SubentryFlowHandler(ConfigSubentryFlow):
         }
         
         # Add service-specific fields
-        if self.subentry_type == SERVICE_TYPE_CONVERSATION:
+        if self._subentry_type == SERVICE_TYPE_CONVERSATION:
             schema_fields.update({
                 vol.Optional(
                     CONF_PROMPT, 
