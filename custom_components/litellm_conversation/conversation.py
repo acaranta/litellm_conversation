@@ -11,10 +11,10 @@ import async_timeout
 
 from homeassistant.components import conversation
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_API_KEY, MATCH_ALL
+from homeassistant.const import CONF_API_KEY, CONF_LLM_HASS_API, MATCH_ALL
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady, TemplateError
-from homeassistant.helpers import config_validation as cv, intent, template
+from homeassistant.helpers import config_validation as cv, intent, llm, template
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.util import ulid
 
@@ -30,6 +30,7 @@ from .const import (
     CONF_SERVICE_TYPE,
     CONF_TEMPERATURE,
     CONF_TOP_P,
+    DEFAULT_LLM_HASS_API,
     DEFAULT_MAX_TOKENS,
     DEFAULT_MODEL,
     DEFAULT_PRESENCE_PENALTY,
@@ -157,7 +158,10 @@ class LiteLLMConversationEntity(conversation.ConversationEntity):
     @property
     def supported_features(self) -> conversation.ConversationEntityFeature:
         """Return the supported features."""
-        return conversation.ConversationEntityFeature.CONTROL
+        llm_hass_api = self.subentry.data.get(CONF_LLM_HASS_API, DEFAULT_LLM_HASS_API)
+        if llm.LLM_API_ASSIST in llm_hass_api:
+            return conversation.ConversationEntityFeature.CONTROL
+        return conversation.ConversationEntityFeature(0)
 
     async def async_process(
         self, user_input: conversation.ConversationInput
@@ -171,6 +175,7 @@ class LiteLLMConversationEntity(conversation.ConversationEntity):
         temperature = self.subentry.data.get(CONF_TEMPERATURE, DEFAULT_TEMPERATURE)
         presence_penalty = self.subentry.data.get(CONF_PRESENCE_PENALTY, DEFAULT_PRESENCE_PENALTY)
         frequency_penalty = self.subentry.data.get(CONF_FREQUENCY_PENALTY, DEFAULT_FREQUENCY_PENALTY)
+        llm_hass_api = self.subentry.data.get(CONF_LLM_HASS_API, DEFAULT_LLM_HASS_API)
         
         # Get connection data from parent entry
         base_url = self.entry.data[CONF_BASE_URL]
@@ -182,7 +187,7 @@ class LiteLLMConversationEntity(conversation.ConversationEntity):
         else:
             conversation_id = ulid.ulid()
             try:
-                prompt = self._async_generate_prompt(raw_prompt)
+                prompt = self._async_generate_prompt(raw_prompt, llm_hass_api, user_input)
             except TemplateError as err:
                 _LOGGER.error("Error rendering prompt: %s", err)
                 intent_response = intent.IntentResponse(language=user_input.language)
@@ -283,11 +288,21 @@ class LiteLLMConversationEntity(conversation.ConversationEntity):
             response=intent_response, conversation_id=conversation_id
         )
 
-    def _async_generate_prompt(self, raw_prompt: str) -> str:
+    def _async_generate_prompt(self, raw_prompt: str, llm_hass_api: list[str], user_input: conversation.ConversationInput) -> str:
         """Generate a prompt for the user."""
+        llm_context = llm.LLMContext(
+            platform=DOMAIN,
+            context=user_input.context,
+            user_prompt=user_input.text,
+            language=user_input.language,
+            assistant=llm.LLM_API_ASSIST if llm.LLM_API_ASSIST in llm_hass_api else "none",
+            device_id=user_input.device_id,
+        )
+        
         return template.Template(raw_prompt, self.hass).async_render(
             {
                 "ha_name": self.hass.config.location_name,
+                "llm_context": llm_context,
             },
             parse_result=False,
         )

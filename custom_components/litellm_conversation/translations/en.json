@@ -58,7 +58,8 @@
             "temperature": "Temperature",
             "top_p": "Top P",
             "presence_penalty": "Presence Penalty",
-            "frequency_penalty": "Frequency Penalty"
+            "frequency_penalty": "Frequency Penalty",
+            "llm_hass_api": "Control Home Assistant"
           },
           "data_description": {
             "name": "Name for this conversation agent",
@@ -68,7 +69,8 @@
             "temperature": "Controls randomness: Lower values are more deterministic",
             "top_p": "Alternative to sampling with temperature",
             "presence_penalty": "Penalize new tokens based on their presence in the text",
-            "frequency_penalty": "Penalize new tokens based on their frequency in the text"
+            "frequency_penalty": "Penalize new tokens based on their frequency in the text",
+            "llm_hass_api": "Allow the assistant to control Home Assistant entities"
           }
         }
       }

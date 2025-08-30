@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from homeassistant.components.conversation import DOMAIN as CONVERSATION_DOMAIN
+from homeassistant.const import CONF_LLM_HASS_API
+from homeassistant.helpers import llm
 
 DOMAIN = "litellm_conversation"
 
@@ -43,6 +45,7 @@ Answer the user's questions about the world truthfully. If the user wants to con
 """
 
 DEFAULT_CONF_PROMPT = "Be helpful and friendly. Answer as a personal assistant."
+DEFAULT_LLM_HASS_API = [llm.LLM_API_ASSIST]
 
 RECOMMENDED_MODELS = [
     "gpt-3.5-turbo",

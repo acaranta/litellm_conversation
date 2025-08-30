@@ -16,7 +16,7 @@ from homeassistant.config_entries import (
     ConfigSubentryFlow,
     SubentryFlowResult,
 )
-from homeassistant.const import CONF_API_KEY
+from homeassistant.const import CONF_API_KEY, CONF_LLM_HASS_API
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
@@ -44,6 +44,7 @@ from .const import (
     DEFAULT_BASE_URL,
     DEFAULT_CONF_PROMPT,
     DEFAULT_FREQUENCY_PENALTY,
+    DEFAULT_LLM_HASS_API,
     DEFAULT_MAX_TOKENS,
     DEFAULT_MODEL,
     DEFAULT_PRESENCE_PENALTY,
@@ -130,6 +131,7 @@ class SubentryFlowHandler(ConfigSubentryFlow):
                     CONF_TOP_P: user_input.get(CONF_TOP_P, DEFAULT_TOP_P),
                     CONF_PRESENCE_PENALTY: user_input.get(CONF_PRESENCE_PENALTY, DEFAULT_PRESENCE_PENALTY),
                     CONF_FREQUENCY_PENALTY: user_input.get(CONF_FREQUENCY_PENALTY, DEFAULT_FREQUENCY_PENALTY),
+                    CONF_LLM_HASS_API: user_input.get(CONF_LLM_HASS_API, DEFAULT_LLM_HASS_API),
                 })
 
             if self._is_new:
@@ -187,6 +189,10 @@ class SubentryFlowHandler(ConfigSubentryFlow):
                     CONF_FREQUENCY_PENALTY, 
                     default=existing_data.get(CONF_FREQUENCY_PENALTY, DEFAULT_FREQUENCY_PENALTY)
                 ): NumberSelector(NumberSelectorConfig(min=-2.0, max=2.0, step=0.1, mode=NumberSelectorMode.BOX)),
+                vol.Optional(
+                    CONF_LLM_HASS_API, 
+                    default=existing_data.get(CONF_LLM_HASS_API, DEFAULT_LLM_HASS_API)
+                ): SelectSelector(SelectSelectorConfig(options=["none", "assist"], mode=SelectSelectorMode.LIST, multiple=True)),
             })
 
         return self.async_show_form(
@@ -299,6 +305,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
                                 CONF_TOP_P: DEFAULT_TOP_P,
                                 CONF_PRESENCE_PENALTY: DEFAULT_PRESENCE_PENALTY,
                                 CONF_FREQUENCY_PENALTY: DEFAULT_FREQUENCY_PENALTY,
+                                CONF_LLM_HASS_API: DEFAULT_LLM_HASS_API,
                             },
                             "title": "LiteLLM Conversation Agent",
                             "unique_id": None,
