@@ -293,9 +293,8 @@ class LiteLLMConversationEntity(conversation.ConversationEntity):
         llm_context = llm.LLMContext(
             platform=DOMAIN,
             context=user_input.context,
-            user_prompt=user_input.text,
             language=user_input.language,
-            assistant=llm.LLM_API_ASSIST if llm.LLM_API_ASSIST in llm_hass_api else "none",
+            assistant=llm.LLM_API_ASSIST if llm.LLM_API_ASSIST in llm_hass_api else None,
             device_id=user_input.device_id,
         )
         
