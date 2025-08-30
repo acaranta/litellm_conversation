@@ -118,6 +118,9 @@ class SubentryFlowHandler(ConfigSubentryFlow):
                 CONF_MODEL: user_input[CONF_MODEL],
             }
             
+            # Extract title if provided
+            title = user_input.pop("name", None)
+            
             # Add service-specific fields
             if self._subentry_type == SERVICE_TYPE_CONVERSATION:
                 subentry_data.update({
@@ -131,7 +134,7 @@ class SubentryFlowHandler(ConfigSubentryFlow):
 
             if self._is_new:
                 return self.async_create_entry(
-                    title=f"LiteLLM {SERVICE_TYPE_NAMES[self._subentry_type]}",
+                    title=title or f"LiteLLM {SERVICE_TYPE_NAMES[self._subentry_type]}",
                     data=subentry_data,
                 )
             else:
@@ -139,6 +142,7 @@ class SubentryFlowHandler(ConfigSubentryFlow):
                     self._get_entry(),
                     self._get_reconfigure_subentry(),
                     data=subentry_data,
+                    title=title,
                 )
 
         # Get existing values if reconfiguring
@@ -146,6 +150,10 @@ class SubentryFlowHandler(ConfigSubentryFlow):
         
         # Build form schema
         schema_fields = {
+            vol.Optional(
+                "name",
+                default=self._get_reconfigure_subentry().title if not self._is_new else f"LiteLLM {SERVICE_TYPE_NAMES[self._subentry_type]}"
+            ): TextSelector(),
             vol.Required(
                 CONF_MODEL, 
                 default=existing_data.get(CONF_MODEL, default_model)

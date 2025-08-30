@@ -6,21 +6,17 @@
         "description": "Configure your LiteLLM endpoint and credentials",
         "data": {
           "base_url": "Base URL",
-          "api_key": "API Key",
-          "chat_model": "Model",
-          "prompt": "System Prompt"
+          "api_key": "API Key"
         },
         "data_description": {
           "base_url": "The base URL for your LiteLLM proxy endpoint (e.g., https://api.openai.com/v1)",
-          "api_key": "The API key for authentication with your LiteLLM proxy",
-          "chat_model": "The model to use for conversations",
-          "prompt": "Custom prompt to use for the conversation agent"
+          "api_key": "The API key for authentication with your LiteLLM proxy"
         }
       }
     },
     "error": {
       "cannot_connect": "Failed to connect to the LiteLLM endpoint",
-      "invalid_auth": "Invalid authentication credentials",
+      "invalid_auth": "Invalid authentication credentials", 
       "unknown": "Unexpected error occurred"
     },
     "abort": {
@@ -65,6 +61,7 @@
             "frequency_penalty": "Frequency Penalty"
           },
           "data_description": {
+            "name": "Name for this conversation agent",
             "model": "The model to use for chat completions",
             "prompt": "The system prompt template to use for conversations",
             "max_tokens": "Maximum number of tokens to generate",
@@ -91,6 +88,7 @@
             "model": "Model"
           },
           "data_description": {
+            "name": "Name for this speech-to-text service",
             "model": "The speech-to-text model to use"
           }
         }
@@ -101,16 +99,17 @@
         "user": "Add text-to-speech service",
         "reconfigure": "Reconfigure text-to-speech service"
       },
-      "entry_type": "Text-to-speech service", 
+      "entry_type": "Text-to-speech service",
       "step": {
         "set_options": {
           "title": "Configure Text-to-Speech",
           "description": "Set up your text-to-speech service",
           "data": {
-            "name": "Name",
+            "name": "Name", 
             "model": "Model"
           },
           "data_description": {
+            "name": "Name for this text-to-speech service",
             "model": "The text-to-speech model to use"
           }
         }
@@ -131,6 +130,7 @@
             "model": "Model"
           },
           "data_description": {
+            "name": "Name for this AI task service",
             "model": "The vision model to use for AI tasks"
           }
         }
