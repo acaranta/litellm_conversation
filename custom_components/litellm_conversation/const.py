@@ -44,7 +44,37 @@ An overview of the areas and the devices in this smart home:
 Answer the user's questions about the world truthfully. If the user wants to control a device, reject the request and suggest using the Home Assistant app.
 """
 
-DEFAULT_CONF_PROMPT = "Be helpful and friendly. Answer as a personal assistant."
+DEFAULT_CONF_PROMPT = """You are a voice assistant for Home Assistant.
+
+Current Home: {{ ha_name }}
+User: {{ user_name }}
+{% if device_id %}Device: {{ device_id }}{% endif %}
+{% if language %}Language: {{ language }}{% endif %}
+
+{% if llm_context.assistant == 'assist' %}
+You can help control Home Assistant devices and answer questions about the home.
+
+An overview of the areas and devices in this smart home:
+{%- for area in areas() %}
+  {%- set area_info = namespace(printed=false) %}
+  {%- for device in area_devices(area) -%}
+    {%- if not device_attr(device, "disabled_by") and not device_attr(device, "entry_type") and device_attr(device, "name") %}
+      {%- if not area_info.printed %}
+
+{{ area_name(area) }}:
+        {%- set area_info.printed = true %}
+      {%- endif %}
+- {{ device_attr(device, "name") }}{% if device_attr(device, "model") and (device_attr(device, "model") | string) not in (device_attr(device, "name") | string) %} ({{ device_attr(device, "model") }}){% endif %}
+    {%- endif %}
+  {%- endfor %}
+{%- endfor %}
+
+Use the tools available to help control devices and answer questions about the smart home.
+{% else %}
+You are a helpful assistant. Answer questions and provide information, but you cannot control any devices.
+{% endif %}
+
+Be helpful, friendly, and concise in your responses."""
 DEFAULT_LLM_HASS_API = [llm.LLM_API_ASSIST]
 
 RECOMMENDED_MODELS = [

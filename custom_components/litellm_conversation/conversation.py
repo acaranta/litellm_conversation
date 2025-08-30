@@ -181,23 +181,27 @@ class LiteLLMConversationEntity(conversation.ConversationEntity):
         base_url = self.entry.data[CONF_BASE_URL]
         api_key = self.entry.data[CONF_API_KEY]
 
+        # Always regenerate system prompt with fresh context
+        try:
+            prompt = self._async_generate_prompt(raw_prompt, llm_hass_api, user_input)
+        except TemplateError as err:
+            _LOGGER.error("Error rendering prompt: %s", err)
+            intent_response = intent.IntentResponse(language=user_input.language)
+            intent_response.async_set_error(
+                intent.IntentResponseErrorCode.UNKNOWN,
+                f"Sorry, I had a problem with my template: {err}",
+            )
+            return conversation.ConversationResult(
+                response=intent_response, conversation_id=user_input.conversation_id
+            )
+
         if user_input.conversation_id in self.history:
             conversation_id = user_input.conversation_id
-            messages = self.history[conversation_id]
+            messages = self.history[conversation_id].copy()
+            # Update system message with fresh context
+            messages[0] = {"role": "system", "content": prompt}
         else:
-            conversation_id = ulid.ulid()
-            try:
-                prompt = self._async_generate_prompt(raw_prompt, llm_hass_api, user_input)
-            except TemplateError as err:
-                _LOGGER.error("Error rendering prompt: %s", err)
-                intent_response = intent.IntentResponse(language=user_input.language)
-                intent_response.async_set_error(
-                    intent.IntentResponseErrorCode.UNKNOWN,
-                    f"Sorry, I had a problem with my template: {err}",
-                )
-                return conversation.ConversationResult(
-                    response=intent_response, conversation_id=conversation_id
-                )
+            conversation_id = user_input.conversation_id or ulid.ulid()
             messages = [{"role": "system", "content": prompt}]
 
         messages.append({"role": "user", "content": user_input.text})
@@ -298,10 +302,17 @@ class LiteLLMConversationEntity(conversation.ConversationEntity):
             device_id=user_input.device_id,
         )
         
+        # Enhanced template context with areas, devices, and entities
+        template_context = {
+            "ha_name": self.hass.config.location_name,
+            "llm_context": llm_context,
+            "user_name": user_input.context.user.name if user_input.context and user_input.context.user else "User",
+            "user_id": user_input.context.user_id if user_input.context else None,
+            "device_id": user_input.device_id,
+            "language": user_input.language,
+        }
+        
         return template.Template(raw_prompt, self.hass).async_render(
-            {
-                "ha_name": self.hass.config.location_name,
-                "llm_context": llm_context,
-            },
+            template_context,
             parse_result=False,
         )
